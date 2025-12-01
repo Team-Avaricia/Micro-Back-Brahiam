@@ -1,0 +1,91 @@
+using Microsoft.EntityFrameworkCore;
+using Core.Domain.Entities;
+
+namespace Infrastructure.Persistence
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<User> Users { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<FinancialRule> FinancialRules { get; set; }
+        public DbSet<RecurringTransaction> RecurringTransactions { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // User Configuration
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.PhoneNumber).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.CurrentBalance).HasColumnType("decimal(18,2)");
+                entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.PhoneNumber).IsUnique();
+            });
+
+            // Transaction Configuration
+            modelBuilder.Entity<Transaction>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.Type).HasConversion<string>();
+                entity.Property(e => e.Source).HasConversion<string>();
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.Transactions)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.Date);
+            });
+
+            // FinancialRule Configuration
+            modelBuilder.Entity<FinancialRule>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Category).HasMaxLength(100);
+                entity.Property(e => e.AmountLimit).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Type).HasConversion<string>();
+                entity.Property(e => e.Period).HasConversion<string>();
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.FinancialRules)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => new { e.UserId, e.IsActive });
+            });
+
+            // RecurringTransaction Configuration
+            modelBuilder.Entity<RecurringTransaction>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.Type).HasConversion<string>();
+                entity.Property(e => e.Frequency).HasConversion<string>();
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => new { e.IsActive, e.NextExecutionDate });
+            });
+        }
+    }
+}
