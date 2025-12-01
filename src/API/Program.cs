@@ -4,6 +4,9 @@ using Infrastructure.Repositories;
 using Core.Domain.Interfaces;
 using Core.Application.Services;
 using System.Text.Json.Serialization;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 // Configurar Serilog ANTES de crear el builder
@@ -44,11 +47,42 @@ try
     builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
     builder.Services.AddScoped<IFinancialRuleRepository, FinancialRuleRepository>();
     builder.Services.AddScoped<IRecurringTransactionRepository, RecurringTransactionRepository>();
+    builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
     // Dependency Injection - Services
     builder.Services.AddScoped<SpendingValidationService>();
     builder.Services.AddScoped<TransactionService>();
     builder.Services.AddScoped<RecurringTransactionService>();
+    builder.Services.AddScoped<TokenService>();
+    builder.Services.AddScoped<AuthService>();
+
+    // JWT Authentication Configuration
+    var jwtSettings = builder.Configuration.GetSection("Jwt");
+    var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false; // En producción cambiar a true
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidateAudience = true,
+            ValidAudience = jwtSettings["Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+    builder.Services.AddAuthorization();
 
     // CORS Configuration for Microservices
     builder.Services.AddCors(options =>
@@ -82,6 +116,8 @@ try
     // Enable CORS
     app.UseCors("AllowMicroservices");
 
+    // Authentication DEBE ir antes de Authorization
+    app.UseAuthentication();
     app.UseAuthorization();
 
     app.MapControllers();

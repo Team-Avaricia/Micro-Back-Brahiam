@@ -218,4 +218,62 @@ namespace Infrastructure.Repositories
             }
         }
     }
+
+    public class RefreshTokenRepository : IRefreshTokenRepository
+    {
+        private readonly ApplicationDbContext _context;
+
+        public RefreshTokenRepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<RefreshToken> GetByIdAsync(Guid id)
+        {
+            return await _context.RefreshTokens.FindAsync(id);
+        }
+
+        public async Task<RefreshToken> GetByTokenAsync(string token)
+        {
+            return await _context.RefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == token);
+        }
+
+        public async Task<IEnumerable<RefreshToken>> GetByUserIdAsync(Guid userId)
+        {
+            return await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId)
+                .OrderByDescending(rt => rt.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<RefreshToken>> GetActiveByUserIdAsync(Guid userId)
+        {
+            return await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync();
+        }
+
+        public async Task AddAsync(RefreshToken refreshToken)
+        {
+            await _context.RefreshTokens.AddAsync(refreshToken);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateAsync(RefreshToken refreshToken)
+        {
+            _context.RefreshTokens.Update(refreshToken);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteAsync(Guid id)
+        {
+            var refreshToken = await _context.RefreshTokens.FindAsync(id);
+            if (refreshToken != null)
+            {
+                _context.RefreshTokens.Remove(refreshToken);
+                await _context.SaveChangesAsync();
+            }
+        }
+    }
 }

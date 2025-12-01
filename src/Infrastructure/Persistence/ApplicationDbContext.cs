@@ -14,6 +14,7 @@ namespace Infrastructure.Persistence
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<FinancialRule> FinancialRules { get; set; }
         public DbSet<RecurringTransaction> RecurringTransactions { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -27,6 +28,7 @@ namespace Infrastructure.Persistence
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.PhoneNumber).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.CurrentBalance).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PasswordHash).HasMaxLength(500);
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.HasIndex(e => e.PhoneNumber).IsUnique();
             });
@@ -85,6 +87,24 @@ namespace Infrastructure.Persistence
 
                 entity.HasIndex(e => e.UserId);
                 entity.HasIndex(e => new { e.IsActive, e.NextExecutionDate });
+            });
+
+            // RefreshToken Configuration
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Token).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.CreatedByIp).HasMaxLength(50);
+                entity.Property(e => e.RevokedByIp).HasMaxLength(50);
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.RefreshTokens)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.Token).IsUnique();
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => new { e.UserId, e.IsRevoked, e.ExpiresAt });
             });
         }
     }

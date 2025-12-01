@@ -45,4 +45,15 @@ namespace Core.Domain.Interfaces
         Task UpdateAsync(RecurringTransaction recurringTransaction);
         Task DeleteAsync(Guid id);
     }
+
+    public interface IRefreshTokenRepository
+    {
+        Task<RefreshToken> GetByIdAsync(Guid id);
+        Task<RefreshToken> GetByTokenAsync(string token);
+        Task<IEnumerable<RefreshToken>> GetByUserIdAsync(Guid userId);
+        Task<IEnumerable<RefreshToken>> GetActiveByUserIdAsync(Guid userId);
+        Task AddAsync(RefreshToken refreshToken);
+        Task UpdateAsync(RefreshToken refreshToken);
+        Task DeleteAsync(Guid id);
+    }
 }
