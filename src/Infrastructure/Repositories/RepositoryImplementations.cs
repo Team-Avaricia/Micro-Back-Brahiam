@@ -18,22 +18,22 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<User> GetByIdAsync(Guid id)
+        public async Task<User?> GetByIdAsync(Guid id)
         {
             return await _context.Users.FindAsync(id);
         }
 
-        public async Task<User> GetByEmailAsync(string email)
+        public async Task<User?> GetByEmailAsync(string email)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         }
 
-        public async Task<User> GetByPhoneNumberAsync(string phoneNumber)
+        public async Task<User?> GetByPhoneNumberAsync(string phoneNumber)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
         }
 
-        public async Task<User> GetByTelegramIdAsync(long telegramId)
+        public async Task<User?> GetByTelegramIdAsync(long telegramId)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.TelegramId == telegramId);
         }
@@ -70,7 +70,7 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<Transaction> GetByIdAsync(Guid id)
+        public async Task<Transaction?> GetByIdAsync(Guid id)
         {
             return await _context.Transactions.FindAsync(id);
         }
@@ -83,7 +83,7 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Transaction>> GetByUserAndPeriodAsync(Guid userId, DateTime start, DateTime end, string category = null)
+        public async Task<IEnumerable<Transaction>> GetByUserAndPeriodAsync(Guid userId, DateTime start, DateTime end, string? category = null)
         {
             var query = _context.Transactions
                 .Where(t => t.UserId == userId && t.Date >= start && t.Date < end);
@@ -122,7 +122,7 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<FinancialRule> GetByIdAsync(Guid id)
+        public async Task<FinancialRule?> GetByIdAsync(Guid id)
         {
             return await _context.FinancialRules.FindAsync(id);
         }
@@ -173,7 +173,7 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<RecurringTransaction> GetByIdAsync(Guid id)
+        public async Task<RecurringTransaction?> GetByIdAsync(Guid id)
         {
             return await _context.RecurringTransactions.FindAsync(id);
         }
@@ -233,12 +233,12 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<RefreshToken> GetByIdAsync(Guid id)
+        public async Task<RefreshToken?> GetByIdAsync(Guid id)
         {
             return await _context.RefreshTokens.FindAsync(id);
         }
 
-        public async Task<RefreshToken> GetByTokenAsync(string token)
+        public async Task<RefreshToken?> GetByTokenAsync(string token)
         {
             return await _context.RefreshTokens
                 .FirstOrDefaultAsync(rt => rt.Token == token);
@@ -291,14 +291,14 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<TelegramLinkCode> GetByCodeAsync(string code)
+        public async Task<TelegramLinkCode?> GetByCodeAsync(string code)
         {
             return await _context.TelegramLinkCodes
                 .Include(c => c.User)
                 .FirstOrDefaultAsync(c => c.Code == code);
         }
 
-        public async Task<TelegramLinkCode> GetPendingCodeByUserIdAsync(Guid userId)
+        public async Task<TelegramLinkCode?> GetPendingCodeByUserIdAsync(Guid userId)
         {
             return await _context.TelegramLinkCodes
                 .Where(c => c.UserId == userId && !c.IsUsed && c.ExpiresAt > DateTime.UtcNow)

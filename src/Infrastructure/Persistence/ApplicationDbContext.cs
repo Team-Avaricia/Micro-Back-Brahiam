@@ -81,7 +81,7 @@ namespace Infrastructure.Persistence
                 entity.Property(e => e.Frequency).HasConversion<string>();
 
                 entity.HasOne(e => e.User)
-                    .WithMany()
+                    .WithMany(u => u.RecurringTransactions)
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
 

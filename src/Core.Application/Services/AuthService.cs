@@ -2,17 +2,18 @@ using System;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain.Entities;
 using Core.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace Core.Application.Services
 {
-    public class AuthService
+    public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
-        private readonly TokenService _tokenService;
+        private readonly ITokenService _tokenService;
         private readonly ILogger<AuthService> _logger;
         private const int RefreshTokenExpirationDays = 7;
         private const int AccessTokenExpirationMinutes = 60;
@@ -20,7 +21,7 @@ namespace Core.Application.Services
         public AuthService(
             IUserRepository userRepository,
             IRefreshTokenRepository refreshTokenRepository,
-            TokenService tokenService,
+            ITokenService tokenService,
             ILogger<AuthService> logger)
         {
             _userRepository = userRepository;

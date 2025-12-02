@@ -4,23 +4,25 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Core.Domain.Entities;
 using Core.Domain.Interfaces;
-using Core.Application.Services;
+using Core.Application.Interfaces;
 using Core.Application.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
         private readonly ITransactionRepository _transactionRepository;
-        private readonly TelegramService _telegramService;
+        private readonly ITelegramService _telegramService;
 
         public UserController(
             IUserRepository userRepository,
             ITransactionRepository transactionRepository,
-            TelegramService telegramService)
+            ITelegramService telegramService)
         {
             _userRepository = userRepository;
             _transactionRepository = transactionRepository;
@@ -169,6 +171,7 @@ namespace API.Controllers
             }
         }
 
+        [AllowAnonymous]
         [HttpPost("link-telegram")]
         public async Task<IActionResult> LinkTelegram([FromBody] LinkTelegramRequest request)
         {
@@ -222,13 +225,5 @@ namespace API.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
-    }
-
-    public class CreateUserRequest
-    {
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string PhoneNumber { get; set; }
-        public decimal InitialBalance { get; set; } = 0;
     }
 }

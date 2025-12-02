@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Core.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class FinancialRuleController : ControllerBase

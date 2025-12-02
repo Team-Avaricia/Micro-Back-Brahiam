@@ -3,6 +3,7 @@ using Infrastructure.Persistence;
 using Infrastructure.Repositories;
 using Core.Domain.Interfaces;
 using Core.Application.Services;
+using Core.Application.Interfaces;
 using System.Text.Json.Serialization;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,11 +19,14 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    Log.Information("Iniciando MS Core API");
+    Log.Information("Starting MS Core API");
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Agregar Serilog
+    // Add environment variables configuration
+    builder.Configuration.AddEnvironmentVariables();
+
+    // Add Serilog
     builder.Host.UseSerilog();
 
     // Add services to the container
@@ -51,12 +55,12 @@ try
     builder.Services.AddScoped<ITelegramLinkCodeRepository, TelegramLinkCodeRepository>();
 
     // Dependency Injection - Services
-    builder.Services.AddScoped<SpendingValidationService>();
-    builder.Services.AddScoped<TransactionService>();
-    builder.Services.AddScoped<RecurringTransactionService>();
-    builder.Services.AddScoped<TokenService>();
-    builder.Services.AddScoped<AuthService>();
-    builder.Services.AddScoped<TelegramService>();
+    builder.Services.AddScoped<ISpendingValidationService, SpendingValidationService>();
+    builder.Services.AddScoped<ITransactionService, TransactionService>();
+    builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
+    builder.Services.AddScoped<ITokenService, TokenService>();
+    builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddScoped<ITelegramService, TelegramService>();
 
     // JWT Authentication Configuration
     var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -69,7 +73,7 @@ try
     })
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = false; // En producción cambiar a true
+        options.RequireHttpsMetadata = false; // Set to true in production
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -124,12 +128,12 @@ try
 
     app.MapControllers();
 
-    Log.Information("MS Core API iniciada correctamente");
+    Log.Information("MS Core API started successfully");
     app.Run();
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "La aplicación falló al iniciar");
+    Log.Fatal(ex, "Application failed to start");
 }
 finally
 {

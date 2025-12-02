@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Core.Application.DTOs
 {
@@ -12,9 +13,17 @@ namespace Core.Application.DTOs
 
     public class LinkTelegramRequest
     {
+        [Required]
+        [StringLength(50)]
         public string LinkCode { get; set; }
+        
+        [Required]
         public long TelegramId { get; set; }
+        
+        [StringLength(100)]
         public string TelegramUsername { get; set; }
+        
+        [StringLength(100)]
         public string TelegramFirstName { get; set; }
     }
 

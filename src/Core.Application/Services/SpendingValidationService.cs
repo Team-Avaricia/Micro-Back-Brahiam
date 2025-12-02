@@ -2,13 +2,14 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Core.Domain.Interfaces;
 
 namespace Core.Application.Services
 {
-    public class SpendingValidationService
+    public class SpendingValidationService : ISpendingValidationService
     {
         private readonly IUserRepository _userRepository;
         private readonly IFinancialRuleRepository _ruleRepository;

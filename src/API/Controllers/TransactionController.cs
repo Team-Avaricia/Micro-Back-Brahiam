@@ -3,21 +3,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Core.Application.DTOs;
-using Core.Application.Services;
+using Core.Application.Interfaces;
 using Core.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class TransactionController : ControllerBase
     {
-        private readonly TransactionService _transactionService;
+        private readonly ITransactionService _transactionService;
         private readonly ITransactionRepository _transactionRepository;
         private readonly IUserRepository _userRepository;
 
         public TransactionController(
-            TransactionService transactionService,
+            ITransactionService transactionService,
             ITransactionRepository transactionRepository,
             IUserRepository userRepository)
         {

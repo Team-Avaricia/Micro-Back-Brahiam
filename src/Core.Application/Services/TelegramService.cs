@@ -1,7 +1,9 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain.Entities;
 using Core.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Core.Application.Services
 {
-    public class TelegramService
+    public class TelegramService : ITelegramService
     {
         private readonly ITelegramLinkCodeRepository _linkCodeRepository;
         private readonly IUserRepository _userRepository;
@@ -133,9 +135,11 @@ namespace Core.Application.Services
         private string GenerateUniqueCode()
         {
             const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-            var random = new Random();
-            return new string(Enumerable.Repeat(chars, 12)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
+            var bytes = new byte[12];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(bytes);
+            
+            return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
         }
     }
 }

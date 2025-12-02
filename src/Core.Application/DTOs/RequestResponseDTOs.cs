@@ -1,20 +1,30 @@
+using System.ComponentModel.DataAnnotations;
 using Core.Domain.Enums;
 
 namespace Core.Application.DTOs
 {
     /// <summary>
-    /// Request del MS AI Worker para validar un gasto
+    /// Request from AI Worker microservice to validate a spending
     /// </summary>
     public class SpendingValidationRequest
     {
+        [Required]
         public string UserId { get; set; }
+        
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
         public decimal Amount { get; set; }
+        
+        [Required]
+        [StringLength(100)]
         public string Category { get; set; }
+        
+        [StringLength(500)]
         public string Description { get; set; }
     }
 
     /// <summary>
-    /// Respuesta del MS Core al MS AI Worker con el veredicto
+    /// Response from Core microservice to AI Worker with the verdict
     /// </summary>
     public class SpendingValidationResponse
     {
@@ -25,32 +35,55 @@ namespace Core.Application.DTOs
     }
 
     /// <summary>
-    /// Request para registrar una transacción
+    /// Request to create a new transaction
     /// </summary>
     public class CreateTransactionRequest
     {
+        [Required]
         public string UserId { get; set; }
+        
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
         public decimal Amount { get; set; }
+        
+        [Required]
         public TransactionType Type { get; set; }
+        
+        [Required]
+        [StringLength(100)]
         public string Category { get; set; }
+        
+        [StringLength(500)]
         public string Description { get; set; }
+        
+        [Required]
         public TransactionSource Source { get; set; }
     }
 
     /// <summary>
-    /// Request para crear una regla financiera
+    /// Request to create a financial rule
     /// </summary>
     public class CreateFinancialRuleRequest
     {
+        [Required]
         public string UserId { get; set; }
+        
+        [Required]
         public RuleType Type { get; set; }
+        
+        [StringLength(100)]
         public string Category { get; set; }
+        
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount limit must be greater than 0")]
         public decimal AmountLimit { get; set; }
+        
+        [Required]
         public RulePeriod Period { get; set; }
     }
 
     /// <summary>
-    /// Response para consultas de transacciones con totales
+    /// Response for transaction queries with totals
     /// </summary>
     public class TransactionQueryResponse
     {
@@ -60,7 +93,7 @@ namespace Core.Application.DTOs
     }
 
     /// <summary>
-    /// Response para balance del usuario
+    /// Response for user balance information
     /// </summary>
     public class BalanceResponse
     {
@@ -71,7 +104,7 @@ namespace Core.Application.DTOs
     }
 
     /// <summary>
-    /// Response para resumen por categoría
+    /// Response for category summary
     /// </summary>
     public class CategorySummaryResponse
     {
@@ -88,24 +121,44 @@ namespace Core.Application.DTOs
     }
 
     /// <summary>
-    /// Request para crear una transacción recurrente
+    /// Request to create a recurring transaction
     /// </summary>
     public class CreateRecurringTransactionRequest
     {
+        [Required]
         public string UserId { get; set; }
+        
+        [Required]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
         public decimal Amount { get; set; }
+        
+        [Required]
         public TransactionType Type { get; set; }
+        
+        [Required]
+        [StringLength(100)]
         public string Category { get; set; }
+        
+        [StringLength(500)]
         public string Description { get; set; }
+        
+        [Required]
         public RecurrenceFrequency Frequency { get; set; }
+        
+        [Required]
         public DateTime StartDate { get; set; }
+        
         public DateTime? EndDate { get; set; }
+        
+        [Range(1, 31)]
         public int? DayOfMonth { get; set; }
+        
+        [Range(0, 6)]
         public int? DayOfWeek { get; set; }
     }
 
     /// <summary>
-    /// Response para cashflow mensual
+    /// Response for monthly cashflow
     /// </summary>
     public class CashflowResponse
     {
@@ -123,28 +176,47 @@ namespace Core.Application.DTOs
     }
 
     /// <summary>
-    /// Request para registro de usuario
+    /// Request for user registration
     /// </summary>
     public class RegisterRequest
     {
+        [Required]
+        [StringLength(200, MinimumLength = 2)]
         public string Name { get; set; }
+        
+        [Required]
+        [EmailAddress]
+        [StringLength(200)]
         public string Email { get; set; }
+        
+        [Required]
+        [Phone]
+        [StringLength(50)]
         public string PhoneNumber { get; set; }
+        
+        [Required]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; }
+        
+        [Range(0, double.MaxValue)]
         public decimal InitialBalance { get; set; } = 0;
     }
 
     /// <summary>
-    /// Request para login
+    /// Request for user login
     /// </summary>
     public class LoginRequest
     {
+        [Required]
+        [EmailAddress]
         public string Email { get; set; }
+        
+        [Required]
         public string Password { get; set; }
     }
 
     /// <summary>
-    /// Response de autenticación con tokens
+    /// Authentication response with tokens
     /// </summary>
     public class AuthResponse
     {
@@ -157,10 +229,56 @@ namespace Core.Application.DTOs
     }
 
     /// <summary>
-    /// Request para refresh token
+    /// Request to refresh authentication token
     /// </summary>
     public class RefreshTokenRequest
     {
+        [Required]
         public string RefreshToken { get; set; }
+    }
+
+    /// <summary>
+    /// Request to create a new user
+    /// </summary>
+    public class CreateUserRequest
+    {
+        [Required]
+        [StringLength(200, MinimumLength = 2)]
+        public string Name { get; set; }
+        
+        [Required]
+        [EmailAddress]
+        [StringLength(200)]
+        public string Email { get; set; }
+        
+        [Required]
+        [Phone]
+        [StringLength(50)]
+        public string PhoneNumber { get; set; }
+        
+        [Range(0, double.MaxValue)]
+        public decimal InitialBalance { get; set; } = 0;
+    }
+
+    /// <summary>
+    /// Request to update a recurring transaction
+    /// </summary>
+    public class UpdateRecurringTransactionRequest
+    {
+        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
+        public decimal? Amount { get; set; }
+        
+        [StringLength(500)]
+        public string Description { get; set; }
+        
+        public DateTime? EndDate { get; set; }
+    }
+
+    /// <summary>
+    /// Request to toggle recurring transaction status
+    /// </summary>
+    public class ToggleRecurringTransactionRequest
+    {
+        public bool IsActive { get; set; }
     }
 }

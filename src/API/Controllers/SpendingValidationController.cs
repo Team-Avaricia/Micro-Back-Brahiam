@@ -2,17 +2,19 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Core.Application.DTOs;
-using Core.Application.Services;
+using Core.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class SpendingValidationController : ControllerBase
     {
-        private readonly SpendingValidationService _validationService;
+        private readonly ISpendingValidationService _validationService;
 
-        public SpendingValidationController(SpendingValidationService validationService)
+        public SpendingValidationController(ISpendingValidationService validationService)
         {
             _validationService = validationService;
         }

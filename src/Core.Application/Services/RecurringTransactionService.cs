@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Core.Domain.Interfaces;
@@ -10,17 +11,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Core.Application.Services
 {
-    public class RecurringTransactionService
+    public class RecurringTransactionService : IRecurringTransactionService
     {
         private readonly IRecurringTransactionRepository _recurringRepository;
         private readonly IUserRepository _userRepository;
-        private readonly TransactionService _transactionService;
+        private readonly ITransactionService _transactionService;
         private readonly ILogger<RecurringTransactionService> _logger;
 
         public RecurringTransactionService(
             IRecurringTransactionRepository recurringRepository,
             IUserRepository userRepository,
-            TransactionService transactionService,
+            ITransactionService transactionService,
             ILogger<RecurringTransactionService> logger)
         {
             _recurringRepository = recurringRepository;

@@ -1,13 +1,14 @@
 using System;
 using System.Threading.Tasks;
 using Core.Application.DTOs;
+using Core.Application.Interfaces;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Core.Domain.Interfaces;
 
 namespace Core.Application.Services
 {
-    public class TransactionService
+    public class TransactionService : ITransactionService
     {
         private readonly ITransactionRepository _transactionRepository;
         private readonly IUserRepository _userRepository;

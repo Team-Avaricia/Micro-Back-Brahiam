@@ -3,18 +3,20 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Core.Application.DTOs;
-using Core.Application.Services;
+using Core.Application.Interfaces;
 using Core.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class RecurringTransactionController : ControllerBase
     {
-        private readonly RecurringTransactionService _recurringService;
+        private readonly IRecurringTransactionService _recurringService;
 
-        public RecurringTransactionController(RecurringTransactionService recurringService)
+        public RecurringTransactionController(IRecurringTransactionService recurringService)
         {
             _recurringService = recurringService;
         }
@@ -195,17 +197,5 @@ namespace API.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
-    }
-
-    public class UpdateRecurringTransactionRequest
-    {
-        public decimal? Amount { get; set; }
-        public string Description { get; set; }
-        public DateTime? EndDate { get; set; }
-    }
-
-    public class ToggleRecurringTransactionRequest
-    {
-        public bool IsActive { get; set; }
     }
 }

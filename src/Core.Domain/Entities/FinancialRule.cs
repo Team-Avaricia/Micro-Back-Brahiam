@@ -8,16 +8,16 @@ namespace Core.Domain.Entities
     {
         public Guid UserId { get; private set; }
         public RuleType Type { get; private set; }
-        public string Category { get; private set; }
+        public string? Category { get; private set; }
         public decimal AmountLimit { get; private set; }
         public RulePeriod Period { get; private set; }
         public bool IsActive { get; private set; }
 
-        public User User { get; private set; }
+        public User User { get; private set; } = null!;
 
         private FinancialRule() { }
 
-        public FinancialRule(Guid userId, RuleType type, string category, decimal amountLimit, RulePeriod period)
+        public FinancialRule(Guid userId, RuleType type, string? category, decimal amountLimit, RulePeriod period)
         {
             UserId = userId;
             Type = type;
