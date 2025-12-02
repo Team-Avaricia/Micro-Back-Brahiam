@@ -18,9 +18,6 @@ namespace API.Controllers
             _ruleRepository = ruleRepository;
         }
 
-        /// <summary>
-        /// Endpoint para Dashboard Vue.js: Crea una nueva regla financiera
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> CreateRule([FromBody] CreateFinancialRuleRequest request)
         {
@@ -31,7 +28,6 @@ namespace API.Controllers
                 
                 await _ruleRepository.AddAsync(rule);
                 
-                // Retornar el objeto completo de la regla como espera Johan
                 return Ok(new
                 {
                     id = rule.Id,
@@ -50,9 +46,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene todas las reglas activas de un usuario
-        /// </summary>
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserRules(string userId)
         {
@@ -68,9 +61,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene una regla específica por ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetRule(string id)
         {
@@ -80,7 +70,7 @@ namespace API.Controllers
                 var rule = await _ruleRepository.GetByIdAsync(ruleGuid);
                 
                 if (rule == null)
-                    return NotFound(new { error = "Regla no encontrada" });
+                    return NotFound(new { error = "Rule not found" });
 
                 return Ok(rule);
             }
@@ -90,9 +80,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Desactiva una regla (soft delete)
-        /// </summary>
         [HttpPatch("{id}/deactivate")]
         public async Task<IActionResult> DeactivateRule(string id)
         {
@@ -102,12 +89,12 @@ namespace API.Controllers
                 var rule = await _ruleRepository.GetByIdAsync(ruleGuid);
 
                 if (rule == null)
-                    return NotFound(new { error = "Regla no encontrada" });
+                    return NotFound(new { error = "Rule not found" });
 
                 rule.Deactivate();
                 await _ruleRepository.UpdateAsync(rule);
 
-                return Ok(new { message = "Regla desactivada exitosamente" });
+                return Ok(new { message = "Rule deactivated successfully" });
             }
             catch (Exception ex)
             {
@@ -115,9 +102,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Elimina permanentemente una regla
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRule(string id)
         {
@@ -127,11 +111,11 @@ namespace API.Controllers
                 var rule = await _ruleRepository.GetByIdAsync(ruleGuid);
 
                 if (rule == null)
-                    return NotFound(new { error = "Regla no encontrada" });
+                    return NotFound(new { error = "Rule not found" });
 
                 await _ruleRepository.DeleteAsync(ruleGuid);
 
-                return Ok(new { message = "Regla eliminada exitosamente" });
+                return Ok(new { message = "Rule deleted successfully" });
             }
             catch (Exception ex)
             {

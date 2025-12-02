@@ -17,9 +17,6 @@ namespace API.Controllers
             _validationService = validationService;
         }
 
-        /// <summary>
-        /// Endpoint principal para MS AI Worker: Valida si un gasto es permitido
-        /// </summary>
         [HttpPost("validate")]
         public async Task<ActionResult<SpendingValidationResponse>> ValidateSpending([FromBody] SpendingValidationRequest request)
         {
@@ -34,7 +31,7 @@ namespace API.Controllers
                 {
                     IsApproved = false,
                     Verdict = "Error",
-                    Reason = $"Error al validar: {ex.Message}"
+                    Reason = $"Validation error: {ex.Message}"
                 });
             }
         }

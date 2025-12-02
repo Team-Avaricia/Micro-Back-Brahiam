@@ -121,4 +121,46 @@ namespace Core.Application.DTOs
         public string Category { get; set; }
         public decimal Amount { get; set; }
     }
+
+    /// <summary>
+    /// Request para registro de usuario
+    /// </summary>
+    public class RegisterRequest
+    {
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Password { get; set; }
+        public decimal InitialBalance { get; set; } = 0;
+    }
+
+    /// <summary>
+    /// Request para login
+    /// </summary>
+    public class LoginRequest
+    {
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+
+    /// <summary>
+    /// Response de autenticación con tokens
+    /// </summary>
+    public class AuthResponse
+    {
+        public string UserId { get; set; }
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string AccessToken { get; set; }
+        public string RefreshToken { get; set; }
+        public DateTime ExpiresAt { get; set; }
+    }
+
+    /// <summary>
+    /// Request para refresh token
+    /// </summary>
+    public class RefreshTokenRequest
+    {
+        public string RefreshToken { get; set; }
+    }
 }
