@@ -1,16 +1,12 @@
 using System;
 using System.Threading.Tasks;
 using Core.Application.DTOs;
-using Core.Application.Services;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Core.Domain.Interfaces;
 
 namespace Core.Application.Services
 {
-    /// <summary>
-    /// Servicio para gestionar transacciones y actualizar saldos automáticamente
-    /// </summary>
     public class TransactionService
     {
         private readonly ITransactionRepository _transactionRepository;
@@ -29,10 +25,9 @@ namespace Core.Application.Services
 
             if (user == null)
             {
-                throw new InvalidOperationException("Usuario no encontrado");
+                throw new InvalidOperationException("User not found");
             }
 
-            // Crear la transacción
             var transaction = new Transaction(
                 userId,
                 request.Amount,
@@ -45,7 +40,6 @@ namespace Core.Application.Services
 
             await _transactionRepository.AddAsync(transaction);
 
-            // Actualizar el saldo del usuario
             var balanceChange = request.Type == TransactionType.Income ? request.Amount : -request.Amount;
             user.UpdateBalance(balanceChange);
             await _userRepository.UpdateAsync(user);

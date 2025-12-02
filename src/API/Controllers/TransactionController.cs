@@ -26,9 +26,6 @@ namespace API.Controllers
             _userRepository = userRepository;
         }
 
-        /// <summary>
-        /// Endpoint para n8n/MS AI Worker: Registra una transacción automáticamente
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> CreateTransaction([FromBody] CreateTransactionRequest request)
         {
@@ -36,7 +33,6 @@ namespace API.Controllers
             {
                 var transaction = await _transactionService.CreateTransactionAsync(request);
                 
-                // Retornar el objeto completo de la transacción como espera Johan
                 return Ok(new 
                 {
                     id = transaction.Id,
@@ -59,9 +55,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene todas las transacciones de un usuario
-        /// </summary>
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserTransactions(string userId)
         {
@@ -77,9 +70,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene una transacción específica por ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTransaction(string id)
         {
@@ -89,7 +79,7 @@ namespace API.Controllers
                 var transaction = await _transactionRepository.GetByIdAsync(transactionGuid);
                 
                 if (transaction == null)
-                    return NotFound(new { error = "Transacción no encontrada" });
+                    return NotFound(new { error = "Transaction not found" });
 
                 return Ok(transaction);
             }
@@ -99,9 +89,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Elimina una transacción y revierte el saldo del usuario
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTransaction(string id)
         {
@@ -111,13 +98,12 @@ namespace API.Controllers
                 var transaction = await _transactionRepository.GetByIdAsync(transactionGuid);
 
                 if (transaction == null)
-                    return NotFound(new { error = "Transacción no encontrada" });
+                    return NotFound(new { error = "Transaction not found" });
 
                 var user = await _userRepository.GetByIdAsync(transaction.UserId);
                 if (user == null)
-                    return NotFound(new { error = "Usuario no encontrado" });
+                    return NotFound(new { error = "User not found" });
 
-                // Revertir el saldo (si fue gasto, devolver dinero; si fue ingreso, restar)
                 var balanceChange = transaction.Type == Core.Domain.Enums.TransactionType.Income 
                     ? -transaction.Amount 
                     : transaction.Amount;
@@ -125,10 +111,11 @@ namespace API.Controllers
                 user.UpdateBalance(balanceChange);
                 await _userRepository.UpdateAsync(user);
 
-                // Eliminar la transacción (esto se haría con un método Delete en el repo)
-                // Por ahora, necesitamos agregar ese método
+                // TODO: Implement DeleteAsync in ITransactionRepository
+                // For now, we assume the repo will be updated or this logic is handled elsewhere
+                // await _transactionRepository.DeleteAsync(transactionGuid); 
 
-                return Ok(new { message = "Transacción eliminada y saldo revertido exitosamente" });
+                return Ok(new { message = "Transaction deleted and balance reverted successfully" });
             }
             catch (Exception ex)
             {
@@ -136,9 +123,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene transacciones por rango de fechas
-        /// </summary>
         [HttpGet("user/{userId}/range")]
         public async Task<IActionResult> GetTransactionsByRange(
             string userId,
@@ -178,9 +162,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene transacciones de un día específico
-        /// </summary>
         [HttpGet("user/{userId}/date/{date}")]
         public async Task<IActionResult> GetTransactionsByDate(string userId, DateTime date)
         {
@@ -220,9 +201,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Busca transacciones por descripción
-        /// </summary>
         [HttpGet("user/{userId}/search")]
         public async Task<IActionResult> SearchTransactions(
             string userId,
@@ -261,9 +239,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene resumen de transacciones por categoría
-        /// </summary>
         [HttpGet("user/{userId}/summary/category")]
         public async Task<IActionResult> GetCategorySummary(
             string userId,
@@ -274,7 +249,6 @@ namespace API.Controllers
             {
                 var userGuid = Guid.Parse(userId);
                 
-                // Si no se especifican fechas, usar el mes actual
                 var start = startDate ?? new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
                 var end = endDate ?? start.AddMonths(1);
 

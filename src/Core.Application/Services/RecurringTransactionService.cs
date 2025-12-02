@@ -10,9 +10,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Core.Application.Services
 {
-    /// <summary>
-    /// Servicio para gestionar transacciones recurrentes
-    /// </summary>
     public class RecurringTransactionService
     {
         private readonly IRecurringTransactionRepository _recurringRepository;
@@ -32,19 +29,15 @@ namespace Core.Application.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Crea una nueva transacción recurrente
-        /// </summary>
         public async Task<RecurringTransaction> CreateAsync(CreateRecurringTransactionRequest request)
         {
             var userId = Guid.Parse(request.UserId);
-
-            // Verificar que el usuario existe
             var user = await _userRepository.GetByIdAsync(userId);
+            
             if (user == null)
             {
-                _logger.LogWarning("Intento de crear transacción recurrente para usuario inexistente: {UserId}", userId);
-                throw new InvalidOperationException("Usuario no encontrado");
+                _logger.LogWarning("Attempt to create recurring transaction for non-existent user: {UserId}", userId);
+                throw new InvalidOperationException("User not found");
             }
 
             var recurring = new RecurringTransaction(
@@ -62,31 +55,22 @@ namespace Core.Application.Services
 
             await _recurringRepository.AddAsync(recurring);
             
-            _logger.LogInformation("Transacción recurrente creada: {RecurringId} para usuario {UserId}, Monto: {Amount}, Frecuencia: {Frequency}",
+            _logger.LogInformation("Recurring transaction created: {RecurringId} for user {UserId}, Amount: {Amount}, Frequency: {Frequency}",
                 recurring.Id, userId, request.Amount, request.Frequency);
             
             return recurring;
         }
 
-        /// <summary>
-        /// Obtiene todas las transacciones recurrentes de un usuario
-        /// </summary>
         public async Task<IEnumerable<RecurringTransaction>> GetByUserIdAsync(Guid userId)
         {
             return await _recurringRepository.GetByUserIdAsync(userId);
         }
 
-        /// <summary>
-        /// Obtiene solo las transacciones recurrentes activas de un usuario
-        /// </summary>
         public async Task<IEnumerable<RecurringTransaction>> GetActiveByUserIdAsync(Guid userId)
         {
             return await _recurringRepository.GetActiveByUserIdAsync(userId);
         }
 
-        /// <summary>
-        /// Obtiene el resumen de cashflow mensual basado en transacciones recurrentes
-        /// </summary>
         public async Task<CashflowResponse> GetCashflowAsync(Guid userId)
         {
             var activeRecurring = await _recurringRepository.GetActiveByUserIdAsync(userId);
@@ -125,34 +109,28 @@ namespace Core.Application.Services
             };
         }
 
-        /// <summary>
-        /// Actualiza una transacción recurrente
-        /// </summary>
         public async Task UpdateAsync(Guid id, decimal? amount, string description, DateTime? endDate)
         {
             var recurring = await _recurringRepository.GetByIdAsync(id);
             if (recurring == null)
             {
-                _logger.LogWarning("Intento de actualizar transacción recurrente inexistente: {RecurringId}", id);
-                throw new InvalidOperationException("Transacción recurrente no encontrada");
+                _logger.LogWarning("Attempt to update non-existent recurring transaction: {RecurringId}", id);
+                throw new InvalidOperationException("Recurring transaction not found");
             }
 
             recurring.Update(amount, description, endDate);
             await _recurringRepository.UpdateAsync(recurring);
             
-            _logger.LogInformation("Transacción recurrente actualizada: {RecurringId}", id);
+            _logger.LogInformation("Recurring transaction updated: {RecurringId}", id);
         }
 
-        /// <summary>
-        /// Activa/Desactiva una transacción recurrente
-        /// </summary>
         public async Task ToggleActiveAsync(Guid id, bool isActive)
         {
             var recurring = await _recurringRepository.GetByIdAsync(id);
             if (recurring == null)
             {
-                _logger.LogWarning("Intento de toggle transacción recurrente inexistente: {RecurringId}", id);
-                throw new InvalidOperationException("Transacción recurrente no encontrada");
+                _logger.LogWarning("Attempt to toggle non-existent recurring transaction: {RecurringId}", id);
+                throw new InvalidOperationException("Recurring transaction not found");
             }
 
             if (isActive)
@@ -162,31 +140,24 @@ namespace Core.Application.Services
 
             await _recurringRepository.UpdateAsync(recurring);
             
-            _logger.LogInformation("Transacción recurrente {Status}: {RecurringId}", 
-                isActive ? "activada" : "pausada", id);
+            _logger.LogInformation("Recurring transaction {Status}: {RecurringId}", 
+                isActive ? "activated" : "paused", id);
         }
 
-        /// <summary>
-        /// Elimina una transacción recurrente
-        /// </summary>
         public async Task DeleteAsync(Guid id)
         {
             await _recurringRepository.DeleteAsync(id);
-            _logger.LogInformation("Transacción recurrente eliminada: {RecurringId}", id);
+            _logger.LogInformation("Recurring transaction deleted: {RecurringId}", id);
         }
 
-        /// <summary>
-        /// Procesa todas las transacciones recurrentes que deben ejecutarse hoy
-        /// (Este método es llamado por el Background Job)
-        /// </summary>
         public async Task ProcessDueTransactionsAsync()
         {
-            _logger.LogInformation("Iniciando procesamiento de transacciones recurrentes");
+            _logger.LogInformation("Starting processing of recurring transactions");
             
             var dueTransactions = await _recurringRepository.GetDueTransactionsAsync();
             var dueList = dueTransactions.ToList();
             
-            _logger.LogInformation("Encontradas {Count} transacciones recurrentes para procesar", dueList.Count);
+            _logger.LogInformation("Found {Count} recurring transactions to process", dueList.Count);
 
             int processed = 0;
             int failed = 0;
@@ -195,35 +166,33 @@ namespace Core.Application.Services
             {
                 try
                 {
-                    // Crear la transacción real
                     await _transactionService.CreateTransactionAsync(new CreateTransactionRequest
                     {
                         UserId = recurring.UserId.ToString(),
                         Amount = recurring.Amount,
                         Type = recurring.Type,
                         Category = recurring.Category,
-                        Description = $"{recurring.Description} (Recurrente)",
+                        Description = $"{recurring.Description} (Recurring)",
                         Source = TransactionSource.Automatic
                     });
 
-                    // Actualizar la próxima fecha de ejecución
                     recurring.UpdateNextExecutionDate();
                     await _recurringRepository.UpdateAsync(recurring);
                     
                     processed++;
                     
-                    _logger.LogInformation("Transacción recurrente procesada: {RecurringId}, Usuario: {UserId}, Monto: {Amount}",
+                    _logger.LogInformation("Recurring transaction processed: {RecurringId}, User: {UserId}, Amount: {Amount}",
                         recurring.Id, recurring.UserId, recurring.Amount);
                 }
                 catch (Exception ex)
                 {
                     failed++;
-                    _logger.LogError(ex, "Error al procesar transacción recurrente: {RecurringId}", recurring.Id);
+                    _logger.LogError(ex, "Error processing recurring transaction: {RecurringId}", recurring.Id);
                     continue;
                 }
             }
             
-            _logger.LogInformation("Procesamiento completado. Exitosas: {Processed}, Fallidas: {Failed}", 
+            _logger.LogInformation("Processing completed. Successful: {Processed}, Failed: {Failed}", 
                 processed, failed);
         }
     }

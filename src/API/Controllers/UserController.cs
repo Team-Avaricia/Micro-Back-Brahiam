@@ -1,8 +1,11 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Core.Domain.Entities;
 using Core.Domain.Interfaces;
+using Core.Application.Services;
+using Core.Application.DTOs;
 
 namespace API.Controllers
 {
@@ -12,18 +15,18 @@ namespace API.Controllers
     {
         private readonly IUserRepository _userRepository;
         private readonly ITransactionRepository _transactionRepository;
+        private readonly TelegramService _telegramService;
 
         public UserController(
             IUserRepository userRepository,
-            ITransactionRepository transactionRepository)
+            ITransactionRepository transactionRepository,
+            TelegramService telegramService)
         {
             _userRepository = userRepository;
             _transactionRepository = transactionRepository;
+            _telegramService = telegramService;
         }
 
-        /// <summary>
-        /// Crea un nuevo usuario
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
@@ -34,7 +37,7 @@ namespace API.Controllers
 
                 return Ok(new 
                 { 
-                    message = "Usuario creado exitosamente", 
+                    message = "User created successfully", 
                     userId = user.Id,
                     name = user.Name,
                     email = user.Email,
@@ -48,9 +51,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene un usuario por ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUser(string id)
         {
@@ -60,7 +60,7 @@ namespace API.Controllers
                 var user = await _userRepository.GetByIdAsync(userGuid);
 
                 if (user == null)
-                    return NotFound(new { error = "Usuario no encontrado" });
+                    return NotFound(new { error = "User not found" });
 
                 return Ok(user);
             }
@@ -70,9 +70,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene un usuario por email
-        /// </summary>
         [HttpGet("email/{email}")]
         public async Task<IActionResult> GetUserByEmail(string email)
         {
@@ -81,7 +78,7 @@ namespace API.Controllers
                 var user = await _userRepository.GetByEmailAsync(email);
 
                 if (user == null)
-                    return NotFound(new { error = "Usuario no encontrado" });
+                    return NotFound(new { error = "User not found" });
 
                 return Ok(user);
             }
@@ -91,9 +88,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene un usuario por número de teléfono
-        /// </summary>
         [HttpGet("phone/{phoneNumber}")]
         public async Task<IActionResult> GetUserByPhone(string phoneNumber)
         {
@@ -102,7 +96,7 @@ namespace API.Controllers
                 var user = await _userRepository.GetByPhoneNumberAsync(phoneNumber);
 
                 if (user == null)
-                    return NotFound(new { error = "Usuario no encontrado" });
+                    return NotFound(new { error = "User not found" });
 
                 return Ok(user);
             }
@@ -112,9 +106,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene el balance actual del usuario
-        /// </summary>
         [HttpGet("{userId}/balance")]
         public async Task<IActionResult> GetBalance(string userId)
         {
@@ -124,7 +115,7 @@ namespace API.Controllers
                 var user = await _userRepository.GetByIdAsync(userGuid);
 
                 if (user == null)
-                    return NotFound(new { error = "Usuario no encontrado" });
+                    return NotFound(new { error = "User not found" });
 
                 var transactions = await _transactionRepository.GetByUserIdAsync(userGuid);
                 var transactionList = transactions.ToList();
@@ -148,6 +139,83 @@ namespace API.Controllers
                     currentBalance = user.CurrentBalance,
                     lastTransactionDate = lastTransaction?.Date
                 });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("{userId}/telegram-link")]
+        public async Task<IActionResult> GenerateTelegramLink(string userId)
+        {
+            try
+            {
+                var userGuid = Guid.Parse(userId);
+                var response = await _telegramService.GenerateLinkAsync(userGuid);
+                return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                if (ex.Message.Contains("already has Telegram linked"))
+                {
+                    return BadRequest(new { error = ex.Message });
+                }
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpPost("link-telegram")]
+        public async Task<IActionResult> LinkTelegram([FromBody] LinkTelegramRequest request)
+        {
+            try
+            {
+                var user = await _telegramService.LinkTelegramAsync(request);
+                return Ok(new
+                {
+                    success = true,
+                    message = "Telegram account linked successfully",
+                    userId = user.Id,
+                    userName = user.Name
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpGet("{userId}/telegram-status")]
+        public async Task<IActionResult> GetTelegramStatus(string userId)
+        {
+            try
+            {
+                var userGuid = Guid.Parse(userId);
+                var status = await _telegramService.GetStatusAsync(userGuid);
+                return Ok(status);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpDelete("{userId}/telegram")]
+        public async Task<IActionResult> UnlinkTelegram(string userId)
+        {
+            try
+            {
+                var userGuid = Guid.Parse(userId);
+                await _telegramService.UnlinkTelegramAsync(userGuid);
+                return Ok(new { success = true, message = "Telegram account unlinked" });
             }
             catch (Exception ex)
             {

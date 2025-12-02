@@ -13,19 +13,12 @@ namespace API.Controllers
     public class RecurringTransactionController : ControllerBase
     {
         private readonly RecurringTransactionService _recurringService;
-        private readonly IRecurringTransactionRepository _recurringRepository;
 
-        public RecurringTransactionController(
-            RecurringTransactionService recurringService,
-            IRecurringTransactionRepository recurringRepository)
+        public RecurringTransactionController(RecurringTransactionService recurringService)
         {
             _recurringService = recurringService;
-            _recurringRepository = recurringRepository;
         }
 
-        /// <summary>
-        /// Crea una nueva transacción recurrente
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateRecurringTransactionRequest request)
         {
@@ -58,9 +51,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene todas las transacciones recurrentes de un usuario
-        /// </summary>
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetByUser(
             string userId,
@@ -73,7 +63,6 @@ namespace API.Controllers
                 var recurring = await _recurringService.GetByUserIdAsync(userGuid);
                 var recurringList = recurring.ToList();
 
-                // Filtrar por tipo si se especifica
                 if (!string.IsNullOrEmpty(type))
                 {
                     recurringList = recurringList
@@ -81,7 +70,6 @@ namespace API.Controllers
                         .ToList();
                 }
 
-                // Filtrar por estado activo si se especifica
                 if (isActive.HasValue)
                 {
                     recurringList = recurringList.Where(r => r.IsActive == isActive.Value).ToList();
@@ -119,9 +107,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene el cashflow mensual del usuario
-        /// </summary>
         [HttpGet("user/{userId}/cashflow")]
         public async Task<IActionResult> GetCashflow(string userId)
         {
@@ -137,9 +122,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Actualiza una transacción recurrente
-        /// </summary>
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(
             string id,
@@ -154,7 +136,7 @@ namespace API.Controllers
                     request.Description,
                     request.EndDate);
 
-                return Ok(new { message = "Transacción recurrente actualizada exitosamente" });
+                return Ok(new { message = "Recurring transaction updated successfully" });
             }
             catch (InvalidOperationException ex)
             {
@@ -166,9 +148,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Activa/Desactiva una transacción recurrente
-        /// </summary>
         [HttpPatch("{id}/toggle")]
         public async Task<IActionResult> Toggle(
             string id,
@@ -179,12 +158,12 @@ namespace API.Controllers
                 var recurringGuid = Guid.Parse(id);
                 await _recurringService.ToggleActiveAsync(recurringGuid, request.IsActive);
 
-                var status = request.IsActive ? "activada" : "pausada";
+                var status = request.IsActive ? "activated" : "paused";
                 return Ok(new
                 {
                     id = recurringGuid,
                     isActive = request.IsActive,
-                    message = $"Transacción recurrente {status}"
+                    message = $"Recurring transaction {status}"
                 });
             }
             catch (InvalidOperationException ex)
@@ -197,9 +176,6 @@ namespace API.Controllers
             }
         }
 
-        /// <summary>
-        /// Elimina una transacción recurrente
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
@@ -211,7 +187,7 @@ namespace API.Controllers
                 return Ok(new
                 {
                     success = true,
-                    message = "Transacción recurrente eliminada"
+                    message = "Recurring transaction deleted"
                 });
             }
             catch (Exception ex)

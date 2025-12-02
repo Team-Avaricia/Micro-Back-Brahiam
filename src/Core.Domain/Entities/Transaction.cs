@@ -14,10 +14,9 @@ namespace Core.Domain.Entities
         public TransactionSource Source { get; private set; }
         public string Description { get; private set; }
 
-        // Navigation property
         public User User { get; private set; }
 
-        private Transaction() { } // For EF Core
+        private Transaction() { }
 
         public Transaction(Guid userId, decimal amount, TransactionType type, string category, DateTime date, TransactionSource source, string description)
         {
