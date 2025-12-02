@@ -3,9 +3,6 @@ using Core.Domain.Common;
 
 namespace Core.Domain.Entities
 {
-    /// <summary>
-    /// Representa un token de actualización para JWT
-    /// </summary>
     public class RefreshToken : BaseEntity
     {
         public Guid UserId { get; private set; }
@@ -16,10 +13,8 @@ namespace Core.Domain.Entities
         public string RevokedByIp { get; private set; }
         public DateTime? RevokedAt { get; private set; }
 
-        // Navigation property
         public User User { get; private set; }
 
-        // Constructor privado para EF Core
         private RefreshToken() { }
 
         public RefreshToken(Guid userId, string token, DateTime expiresAt, string createdByIp)

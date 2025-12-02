@@ -8,9 +8,6 @@ using Core.Domain.Interfaces;
 
 namespace Core.Application.Services
 {
-    /// <summary>
-    /// Motor de Reglas: Valida si un gasto es permitido según las reglas del usuario
-    /// </summary>
     public class SpendingValidationService
     {
         private readonly IUserRepository _userRepository;
@@ -34,65 +31,85 @@ namespace Core.Application.Services
 
             if (user == null)
             {
-                return new SpendingValidationResponse
-                {
-                    IsApproved = false,
-                    Verdict = "Rechazado",
-                    Reason = "Usuario no encontrado"
-                };
+                return CreateRejectionResponse("User not found");
             }
 
-            // 1. Verificar saldo disponible
-            if (user.CurrentBalance < request.Amount)
+            if (HasInsufficientBalance(user, request.Amount))
             {
-                return new SpendingValidationResponse
-                {
-                    IsApproved = false,
-                    Verdict = "Rechazado",
-                    Reason = $"Saldo insuficiente. Disponible: ${user.CurrentBalance:N0}, Requerido: ${request.Amount:N0}",
-                    RemainingBudget = user.CurrentBalance
-                };
+                return CreateRejectionResponse(
+                    $"Insufficient balance. Available: ${user.CurrentBalance:N0}, Required: ${request.Amount:N0}", 
+                    user.CurrentBalance);
             }
 
-            // 2. Verificar reglas activas
             var activeRules = await _ruleRepository.GetActiveRulesByUserIdAsync(userId);
             
             foreach (var rule in activeRules)
             {
-                // Solo validar reglas que apliquen a la categoría o sean globales
-                if (!string.IsNullOrEmpty(rule.Category) && rule.Category != request.Category)
-                    continue;
-
-                var (startDate, endDate) = GetPeriodDates(rule.Period);
-                var transactionsInPeriod = await _transactionRepository.GetByUserAndPeriodAsync(
-                    userId, startDate, endDate, rule.Category);
-
-                var totalSpentInPeriod = transactionsInPeriod
-                    .Where(t => t.Type == TransactionType.Expense)
-                    .Sum(t => t.Amount);
-
-                var projectedTotal = totalSpentInPeriod + request.Amount;
-
-                if (projectedTotal > rule.AmountLimit)
+                if (IsRuleApplicable(rule, request.Category))
                 {
-                    var remaining = rule.AmountLimit - totalSpentInPeriod;
-                    return new SpendingValidationResponse
+                    var violation = await CheckRuleViolationAsync(rule, userId, request.Amount);
+                    if (violation != null)
                     {
-                        IsApproved = false,
-                        Verdict = "Rechazado",
-                        Reason = $"Excedes el límite {GetPeriodName(rule.Period)} de {rule.Category ?? "general"}: ${rule.AmountLimit:N0}. Ya gastaste ${totalSpentInPeriod:N0}, te quedan ${remaining:N0}",
-                        RemainingBudget = remaining
-                    };
+                        return violation;
+                    }
                 }
             }
 
-            // 3. Si pasa todas las validaciones, aprobar
+            return CreateApprovalResponse(user.CurrentBalance - request.Amount);
+        }
+
+        private bool HasInsufficientBalance(User user, decimal amount)
+        {
+            return user.CurrentBalance < amount;
+        }
+
+        private bool IsRuleApplicable(FinancialRule rule, string category)
+        {
+            return string.IsNullOrEmpty(rule.Category) || rule.Category == category;
+        }
+
+        private async Task<SpendingValidationResponse> CheckRuleViolationAsync(FinancialRule rule, Guid userId, decimal requestedAmount)
+        {
+            var (startDate, endDate) = GetPeriodDates(rule.Period);
+            var transactionsInPeriod = await _transactionRepository.GetByUserAndPeriodAsync(
+                userId, startDate, endDate, rule.Category);
+
+            var totalSpentInPeriod = transactionsInPeriod
+                .Where(t => t.Type == TransactionType.Expense)
+                .Sum(t => t.Amount);
+
+            var projectedTotal = totalSpentInPeriod + requestedAmount;
+
+            if (projectedTotal > rule.AmountLimit)
+            {
+                var remaining = rule.AmountLimit - totalSpentInPeriod;
+                return CreateRejectionResponse(
+                    $"Exceeds {rule.Period} limit for {rule.Category ?? "general"}: ${rule.AmountLimit:N0}. Spent: ${totalSpentInPeriod:N0}, Remaining: ${remaining:N0}",
+                    remaining);
+            }
+
+            return null;
+        }
+
+        private SpendingValidationResponse CreateRejectionResponse(string reason, decimal remainingBudget = 0)
+        {
+            return new SpendingValidationResponse
+            {
+                IsApproved = false,
+                Verdict = "Rejected",
+                Reason = reason,
+                RemainingBudget = remainingBudget
+            };
+        }
+
+        private SpendingValidationResponse CreateApprovalResponse(decimal remainingBudget)
+        {
             return new SpendingValidationResponse
             {
                 IsApproved = true,
-                Verdict = "Aprobado",
-                Reason = $"Gasto permitido. Saldo después: ${user.CurrentBalance - request.Amount:N0}",
-                RemainingBudget = user.CurrentBalance - request.Amount
+                Verdict = "Approved",
+                Reason = "Spending allowed",
+                RemainingBudget = remainingBudget
             };
         }
 
@@ -106,18 +123,6 @@ namespace Core.Application.Services
                 RulePeriod.Monthly => (new DateTime(now.Year, now.Month, 1), new DateTime(now.Year, now.Month, 1).AddMonths(1)),
                 RulePeriod.Yearly => (new DateTime(now.Year, 1, 1), new DateTime(now.Year + 1, 1, 1)),
                 _ => (now.Date, now.Date.AddDays(1))
-            };
-        }
-
-        private string GetPeriodName(RulePeriod period)
-        {
-            return period switch
-            {
-                RulePeriod.Daily => "diario",
-                RulePeriod.Weekly => "semanal",
-                RulePeriod.Monthly => "mensual",
-                RulePeriod.Yearly => "anual",
-                _ => "desconocido"
             };
         }
     }

@@ -11,12 +11,10 @@ namespace Core.Domain.Entities
         public decimal CurrentBalance { get; private set; }
         public string PasswordHash { get; private set; }
 
-        // Navigation properties
         public ICollection<Transaction> Transactions { get; private set; }
         public ICollection<FinancialRule> FinancialRules { get; private set; }
         public ICollection<RefreshToken> RefreshTokens { get; private set; }
 
-        // Constructor privado para EF Core
         private User() 
         {
             Transactions = new List<Transaction>();
@@ -45,6 +43,23 @@ namespace Core.Domain.Entities
         public void SetPassword(string passwordHash)
         {
             PasswordHash = passwordHash;
+            UpdateTimestamp();
+        }
+
+        public long? TelegramId { get; private set; }
+        public string TelegramUsername { get; private set; }
+
+        public void LinkTelegram(long telegramId, string username)
+        {
+            TelegramId = telegramId;
+            TelegramUsername = username;
+            UpdateTimestamp();
+        }
+
+        public void UnlinkTelegram()
+        {
+            TelegramId = null;
+            TelegramUsername = null;
             UpdateTimestamp();
         }
     }

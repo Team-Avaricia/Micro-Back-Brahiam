@@ -4,9 +4,6 @@ using Core.Domain.Enums;
 
 namespace Core.Domain.Entities
 {
-    /// <summary>
-    /// Representa una transacción recurrente (ingreso o gasto programado)
-    /// </summary>
     public class RecurringTransaction : BaseEntity
     {
         public Guid UserId { get; private set; }
@@ -22,15 +19,10 @@ namespace Core.Domain.Entities
         public DateTime NextExecutionDate { get; private set; }
         public bool IsActive { get; private set; }
 
-        // Navigation property
         public User User { get; private set; }
 
-        // Constructor privado para EF Core
         private RecurringTransaction() { }
 
-        /// <summary>
-        /// Constructor para crear una nueva transacción recurrente
-        /// </summary>
         public RecurringTransaction(
             Guid userId,
             decimal amount,
@@ -57,36 +49,24 @@ namespace Core.Domain.Entities
             IsActive = true;
         }
 
-        /// <summary>
-        /// Actualiza la próxima fecha de ejecución
-        /// </summary>
         public void UpdateNextExecutionDate()
         {
             NextExecutionDate = CalculateNextExecutionDate(NextExecutionDate);
             UpdateTimestamp();
         }
 
-        /// <summary>
-        /// Activa la transacción recurrente
-        /// </summary>
         public void Activate()
         {
             IsActive = true;
             UpdateTimestamp();
         }
 
-        /// <summary>
-        /// Desactiva la transacción recurrente
-        /// </summary>
         public void Deactivate()
         {
             IsActive = false;
             UpdateTimestamp();
         }
 
-        /// <summary>
-        /// Actualiza los datos de la transacción recurrente
-        /// </summary>
         public void Update(
             decimal? amount = null,
             string description = null,
@@ -104,9 +84,6 @@ namespace Core.Domain.Entities
             UpdateTimestamp();
         }
 
-        /// <summary>
-        /// Calcula la próxima fecha de ejecución según la frecuencia
-        /// </summary>
         private DateTime CalculateNextExecutionDate(DateTime fromDate)
         {
             return Frequency switch
@@ -119,9 +96,6 @@ namespace Core.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Verifica si la transacción debe ejecutarse hoy
-        /// </summary>
         public bool ShouldExecuteToday()
         {
             return IsActive && NextExecutionDate.Date <= DateTime.UtcNow.Date;

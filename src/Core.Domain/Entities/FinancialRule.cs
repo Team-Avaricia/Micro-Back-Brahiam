@@ -13,10 +13,9 @@ namespace Core.Domain.Entities
         public RulePeriod Period { get; private set; }
         public bool IsActive { get; private set; }
 
-        // Navigation property
         public User User { get; private set; }
 
-        private FinancialRule() { } // For EF Core
+        private FinancialRule() { }
 
         public FinancialRule(Guid userId, RuleType type, string category, decimal amountLimit, RulePeriod period)
         {

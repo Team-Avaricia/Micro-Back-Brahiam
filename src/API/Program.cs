@@ -48,6 +48,7 @@ try
     builder.Services.AddScoped<IFinancialRuleRepository, FinancialRuleRepository>();
     builder.Services.AddScoped<IRecurringTransactionRepository, RecurringTransactionRepository>();
     builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+    builder.Services.AddScoped<ITelegramLinkCodeRepository, TelegramLinkCodeRepository>();
 
     // Dependency Injection - Services
     builder.Services.AddScoped<SpendingValidationService>();
@@ -55,6 +56,7 @@ try
     builder.Services.AddScoped<RecurringTransactionService>();
     builder.Services.AddScoped<TokenService>();
     builder.Services.AddScoped<AuthService>();
+    builder.Services.AddScoped<TelegramService>();
 
     // JWT Authentication Configuration
     var jwtSettings = builder.Configuration.GetSection("Jwt");

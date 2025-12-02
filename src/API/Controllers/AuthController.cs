@@ -18,97 +18,86 @@ namespace API.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// Registra un nuevo usuario
-        /// </summary>
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             try
             {
-                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                var ipAddress = GetClientIpAddress();
                 var response = await _authService.RegisterAsync(request, ipAddress);
-
                 return Ok(response);
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { error = "Error interno del servidor" });
+                return StatusCode(500, new { error = "Internal server error" });
             }
         }
 
-        /// <summary>
-        /// Inicia sesión
-        /// </summary>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             try
             {
-                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                var ipAddress = GetClientIpAddress();
                 var response = await _authService.LoginAsync(request, ipAddress);
-
                 return Ok(response);
             }
             catch (InvalidOperationException ex)
             {
                 return Unauthorized(new { error = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { error = "Error interno del servidor" });
+                return StatusCode(500, new { error = "Internal server error" });
             }
         }
 
-        /// <summary>
-        /// Refresca el access token
-        /// </summary>
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
         {
             try
             {
-                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                var ipAddress = GetClientIpAddress();
                 var response = await _authService.RefreshTokenAsync(request.RefreshToken, ipAddress);
-
                 return Ok(response);
             }
             catch (InvalidOperationException ex)
             {
                 return Unauthorized(new { error = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { error = "Error interno del servidor" });
+                return StatusCode(500, new { error = "Internal server error" });
             }
         }
 
-        /// <summary>
-        /// Revoca un refresh token
-        /// </summary>
         [Authorize]
         [HttpPost("revoke-token")]
         public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest request)
         {
             try
             {
-                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                var ipAddress = GetClientIpAddress();
                 await _authService.RevokeTokenAsync(request.RefreshToken, ipAddress);
-
-                return Ok(new { message = "Token revocado exitosamente" });
+                return Ok(new { message = "Token revoked successfully" });
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new { error = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { error = "Error interno del servidor" });
+                return StatusCode(500, new { error = "Internal server error" });
             }
+        }
+
+        private string GetClientIpAddress()
+        {
+            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         }
     }
 }

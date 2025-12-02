@@ -33,6 +33,11 @@ namespace Infrastructure.Repositories
             return await _context.Users.FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
         }
 
+        public async Task<User> GetByTelegramIdAsync(long telegramId)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.TelegramId == telegramId);
+        }
+
         public async Task AddAsync(User user)
         {
             await _context.Users.AddAsync(user);
@@ -274,6 +279,56 @@ namespace Infrastructure.Repositories
                 _context.RefreshTokens.Remove(refreshToken);
                 await _context.SaveChangesAsync();
             }
+        }
+    }
+
+    public class TelegramLinkCodeRepository : ITelegramLinkCodeRepository
+    {
+        private readonly ApplicationDbContext _context;
+
+        public TelegramLinkCodeRepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<TelegramLinkCode> GetByCodeAsync(string code)
+        {
+            return await _context.TelegramLinkCodes
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.Code == code);
+        }
+
+        public async Task<TelegramLinkCode> GetPendingCodeByUserIdAsync(Guid userId)
+        {
+            return await _context.TelegramLinkCodes
+                .Where(c => c.UserId == userId && !c.IsUsed && c.ExpiresAt > DateTime.UtcNow)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task AddAsync(TelegramLinkCode telegramLinkCode)
+        {
+            await _context.TelegramLinkCodes.AddAsync(telegramLinkCode);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateAsync(TelegramLinkCode telegramLinkCode)
+        {
+            _context.TelegramLinkCodes.Update(telegramLinkCode);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveRangeAsync(IEnumerable<TelegramLinkCode> codes)
+        {
+            _context.TelegramLinkCodes.RemoveRange(codes);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<TelegramLinkCode>> GetExpiredCodesAsync()
+        {
+            return await _context.TelegramLinkCodes
+                .Where(c => c.ExpiresAt < DateTime.UtcNow && !c.IsUsed)
+                .ToListAsync();
         }
     }
 }

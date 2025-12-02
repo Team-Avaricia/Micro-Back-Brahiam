@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
@@ -11,9 +10,6 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Core.Application.Services
 {
-    /// <summary>
-    /// Servicio para generar y validar JWT tokens
-    /// </summary>
     public class TokenService
     {
         private readonly IConfiguration _configuration;
@@ -23,9 +19,6 @@ namespace Core.Application.Services
             _configuration = configuration;
         }
 
-        /// <summary>
-        /// Genera un Access Token (JWT)
-        /// </summary>
         public string GenerateAccessToken(User user)
         {
             var securityKey = new SymmetricSecurityKey(
@@ -53,9 +46,6 @@ namespace Core.Application.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        /// <summary>
-        /// Genera un Refresh Token aleatorio
-        /// </summary>
         public string GenerateRefreshToken()
         {
             var randomNumber = new byte[64];
@@ -64,9 +54,6 @@ namespace Core.Application.Services
             return Convert.ToBase64String(randomNumber);
         }
 
-        /// <summary>
-        /// Obtiene el UserId desde un token JWT
-        /// </summary>
         public Guid? GetUserIdFromToken(string token)
         {
             try

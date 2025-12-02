@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using Core.Application.DTOs;
@@ -9,15 +8,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Core.Application.Services
 {
-    /// <summary>
-    /// Servicio de autenticación
-    /// </summary>
     public class AuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly TokenService _tokenService;
         private readonly ILogger<AuthService> _logger;
+        private const int RefreshTokenExpirationDays = 7;
+        private const int AccessTokenExpirationMinutes = 60;
 
         public AuthService(
             IUserRepository userRepository,
@@ -31,31 +29,12 @@ namespace Core.Application.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Registra un nuevo usuario
-        /// </summary>
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request, string ipAddress)
         {
-            // Verificar si el email ya existe
-            var existingUser = await _userRepository.GetByEmailAsync(request.Email);
-            if (existingUser != null)
-            {
-                _logger.LogWarning("Intento de registro con email existente: {Email}", request.Email);
-                throw new InvalidOperationException("El email ya está registrado");
-            }
+            await ValidateUniqueUserAsync(request.Email, request.PhoneNumber);
 
-            // Verificar si el teléfono ya existe
-            var existingPhone = await _userRepository.GetByPhoneNumberAsync(request.PhoneNumber);
-            if (existingPhone != null)
-            {
-                _logger.LogWarning("Intento de registro con teléfono existente: {PhoneNumber}", request.PhoneNumber);
-                throw new InvalidOperationException("El número de teléfono ya está registrado");
-            }
-
-            // Hash de la contraseña
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-            // Crear usuario
             var user = new User(
                 request.Name,
                 request.Email,
@@ -66,103 +45,102 @@ namespace Core.Application.Services
 
             await _userRepository.AddAsync(user);
 
-            _logger.LogInformation("Usuario registrado exitosamente: {UserId}, Email: {Email}", user.Id, user.Email);
+            _logger.LogInformation("User registered successfully: {UserId}, Email: {Email}", user.Id, user.Email);
 
-            // Generar tokens
-            return await GenerateAuthResponse(user, ipAddress);
+            return await GenerateAuthResponseAsync(user, ipAddress);
         }
 
-        /// <summary>
-        /// Inicia sesión
-        /// </summary>
         public async Task<AuthResponse> LoginAsync(LoginRequest request, string ipAddress)
         {
-            // Buscar usuario por email
             var user = await _userRepository.GetByEmailAsync(request.Email);
             if (user == null)
             {
-                _logger.LogWarning("Intento de login con email inexistente: {Email}", request.Email);
-                throw new InvalidOperationException("Credenciales inválidas");
+                _logger.LogWarning("Login attempt with non-existent email: {Email}", request.Email);
+                throw new InvalidOperationException("Invalid credentials");
             }
 
-            // Verificar contraseña
-            if (string.IsNullOrEmpty(user.PasswordHash) || 
-                !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (!IsPasswordValid(user.PasswordHash, request.Password))
             {
-                _logger.LogWarning("Intento de login con contraseña incorrecta para: {Email}", request.Email);
-                throw new InvalidOperationException("Credenciales inválidas");
+                _logger.LogWarning("Login attempt with incorrect password for: {Email}", request.Email);
+                throw new InvalidOperationException("Invalid credentials");
             }
 
-            _logger.LogInformation("Usuario autenticado exitosamente: {UserId}", user.Id);
+            _logger.LogInformation("User authenticated successfully: {UserId}", user.Id);
 
-            // Generar tokens
-            return await GenerateAuthResponse(user, ipAddress);
+            return await GenerateAuthResponseAsync(user, ipAddress);
         }
 
-        /// <summary>
-        /// Refresca el access token usando un refresh token
-        /// </summary>
         public async Task<AuthResponse> RefreshTokenAsync(string refreshTokenValue, string ipAddress)
         {
-            // Buscar refresh token
             var refreshToken = await _refreshTokenRepository.GetByTokenAsync(refreshTokenValue);
             
             if (refreshToken == null || !refreshToken.IsActive)
             {
-                _logger.LogWarning("Intento de refresh con token inválido o expirado");
-                throw new InvalidOperationException("Refresh token inválido");
+                _logger.LogWarning("Refresh attempt with invalid or expired token");
+                throw new InvalidOperationException("Invalid refresh token");
             }
 
-            // Obtener usuario
             var user = await _userRepository.GetByIdAsync(refreshToken.UserId);
             if (user == null)
             {
-                _logger.LogWarning("Refresh token asociado a usuario inexistente: {UserId}", refreshToken.UserId);
-                throw new InvalidOperationException("Usuario no encontrado");
+                _logger.LogWarning("Refresh token associated with non-existent user: {UserId}", refreshToken.UserId);
+                throw new InvalidOperationException("User not found");
             }
 
-            // Revocar el refresh token antiguo
             refreshToken.Revoke(ipAddress);
             await _refreshTokenRepository.UpdateAsync(refreshToken);
 
-            _logger.LogInformation("Refresh token renovado para usuario: {UserId}", user.Id);
+            _logger.LogInformation("Refresh token renewed for user: {UserId}", user.Id);
 
-            // Generar nuevos tokens
-            return await GenerateAuthResponse(user, ipAddress);
+            return await GenerateAuthResponseAsync(user, ipAddress);
         }
 
-        /// <summary>
-        /// Revoca un refresh token
-        /// </summary>
         public async Task RevokeTokenAsync(string refreshTokenValue, string ipAddress)
         {
             var refreshToken = await _refreshTokenRepository.GetByTokenAsync(refreshTokenValue);
             
             if (refreshToken == null || !refreshToken.IsActive)
             {
-                throw new InvalidOperationException("Refresh token inválido");
+                throw new InvalidOperationException("Invalid refresh token");
             }
 
             refreshToken.Revoke(ipAddress);
             await _refreshTokenRepository.UpdateAsync(refreshToken);
 
-            _logger.LogInformation("Refresh token revocado para usuario: {UserId}", refreshToken.UserId);
+            _logger.LogInformation("Refresh token revoked for user: {UserId}", refreshToken.UserId);
         }
 
-        /// <summary>
-        /// Genera la respuesta de autenticación con tokens
-        /// </summary>
-        private async Task<AuthResponse> GenerateAuthResponse(User user, string ipAddress)
+        private async Task ValidateUniqueUserAsync(string email, string phoneNumber)
         {
-            // Generar Access Token (JWT)
-            var accessToken = _tokenService.GenerateAccessToken(user);
+            var existingUser = await _userRepository.GetByEmailAsync(email);
+            if (existingUser != null)
+            {
+                _logger.LogWarning("Registration attempt with existing email: {Email}", email);
+                throw new InvalidOperationException("Email already registered");
+            }
 
-            // Generar Refresh Token
+            var existingPhone = await _userRepository.GetByPhoneNumberAsync(phoneNumber);
+            if (existingPhone != null)
+            {
+                _logger.LogWarning("Registration attempt with existing phone: {PhoneNumber}", phoneNumber);
+                throw new InvalidOperationException("Phone number already registered");
+            }
+        }
+
+        private bool IsPasswordValid(string passwordHash, string password)
+        {
+            return !string.IsNullOrEmpty(passwordHash) && BCrypt.Net.BCrypt.Verify(password, passwordHash);
+        }
+
+        private async Task<AuthResponse> GenerateAuthResponseAsync(User user, string ipAddress)
+        {
+            var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshTokenValue = _tokenService.GenerateRefreshToken();
+            
             var refreshToken = new RefreshToken(
                 user.Id,
                 refreshTokenValue,
-                DateTime.UtcNow.AddDays(7), // Expira en 7 días
+                DateTime.UtcNow.AddDays(RefreshTokenExpirationDays),
                 ipAddress
             );
 
@@ -175,7 +153,7 @@ namespace Core.Application.Services
                 Email = user.Email,
                 AccessToken = accessToken,
                 RefreshToken = refreshTokenValue,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(60) // Mismo que el JWT
+                ExpiresAt = DateTime.UtcNow.AddMinutes(AccessTokenExpirationMinutes)
             };
         }
     }
