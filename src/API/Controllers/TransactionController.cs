@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class TransactionController : ControllerBase
@@ -134,8 +133,10 @@ namespace API.Controllers
             try
             {
                 var userGuid = Guid.Parse(userId);
+                var utcStart = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+                var utcEnd = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
                 var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
-                    userGuid, startDate, endDate);
+                    userGuid, utcStart, utcEnd);
 
                 var transactionList = transactions.ToList();
                 var total = transactionList
@@ -170,8 +171,8 @@ namespace API.Controllers
             try
             {
                 var userGuid = Guid.Parse(userId);
-                var startOfDay = date.Date;
-                var endOfDay = date.Date.AddDays(1);
+                var startOfDay = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+                var endOfDay = DateTime.SpecifyKind(date.Date.AddDays(1), DateTimeKind.Utc);
 
                 var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
                     userGuid, startOfDay, endOfDay);
@@ -251,8 +252,38 @@ namespace API.Controllers
             {
                 var userGuid = Guid.Parse(userId);
                 
-                var start = startDate ?? new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-                var end = endDate ?? start.AddMonths(1);
+                // Si no se envían fechas, obtener TODAS las transacciones del usuario
+                if (!startDate.HasValue && !endDate.HasValue)
+                {
+                    var allTransactions = await _transactionRepository.GetByUserIdAsync(userGuid);
+                    var allExpenses = allTransactions
+                        .Where(t => t.Type == Core.Domain.Enums.TransactionType.Expense)
+                        .ToList();
+
+                    var allGrandTotal = allExpenses.Sum(t => t.Amount);
+
+                    var allSummary = allExpenses
+                        .GroupBy(t => t.Category)
+                        .Select(g => new
+                        {
+                            category = g.Key,
+                            totalAmount = g.Sum(t => t.Amount),
+                            transactionCount = g.Count(),
+                            percentage = allGrandTotal > 0 ? Math.Round((g.Sum(t => t.Amount) / allGrandTotal) * 100, 2) : 0
+                        })
+                        .OrderByDescending(x => x.totalAmount)
+                        .ToList();
+
+                    return Ok(new
+                    {
+                        data = allSummary,
+                        grandTotal = allGrandTotal
+                    });
+                }
+
+                // Si se envían fechas, convertir a UTC
+                var start = DateTime.SpecifyKind(startDate?.Date ?? DateTime.UtcNow.Date.AddDays(-DateTime.UtcNow.Day + 1), DateTimeKind.Utc);
+                var end = DateTime.SpecifyKind(endDate?.Date.AddDays(1) ?? start.AddMonths(1), DateTimeKind.Utc);
 
                 var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
                     userGuid, start, end);

@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class UserController : ControllerBase
@@ -83,6 +82,33 @@ namespace API.Controllers
                     return NotFound(new { error = "User not found" });
 
                 return Ok(user);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("telegram/{telegramId}")]
+        public async Task<IActionResult> GetUserByTelegramId(long telegramId)
+        {
+            try
+            {
+                var user = await _userRepository.GetByTelegramIdAsync(telegramId);
+
+                if (user == null)
+                    return NotFound(new { error = "User not found with this TelegramId" });
+
+                return Ok(new
+                {
+                    id = user.Id,
+                    name = user.Name,
+                    email = user.Email,
+                    phoneNumber = user.PhoneNumber,
+                    telegramId = user.TelegramId,
+                    telegramUsername = user.TelegramUsername,
+                    currentBalance = user.CurrentBalance
+                });
             }
             catch (Exception ex)
             {
