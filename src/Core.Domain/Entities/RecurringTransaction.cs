@@ -18,8 +18,27 @@ namespace Core.Domain.Entities
         public int? DayOfWeek { get; private set; }
         public DateTime NextExecutionDate { get; private set; }
         public bool IsActive { get; private set; }
+        
+        // Payment tracking fields
+        public DateTime? LastPaidDate { get; private set; }
+        public bool IsPaidThisPeriod { get; private set; }
 
         public User User { get; private set; } = null!;
+
+        // Computed property for payment status
+        public PaymentStatus PaymentStatus
+        {
+            get
+            {
+                if (IsPaidThisPeriod)
+                    return PaymentStatus.Paid;
+                
+                if (NextExecutionDate.Date < DateTime.UtcNow.Date)
+                    return PaymentStatus.Overdue;
+                
+                return PaymentStatus.Pending;
+            }
+        }
 
         private RecurringTransaction() { }
 
@@ -99,6 +118,37 @@ namespace Core.Domain.Entities
         public bool ShouldExecuteToday()
         {
             return IsActive && NextExecutionDate.Date <= DateTime.UtcNow.Date;
+        }
+
+        /// <summary>
+        /// Marks this recurring transaction as paid for the current period
+        /// </summary>
+        public void MarkAsPaid()
+        {
+            LastPaidDate = DateTime.UtcNow;
+            IsPaidThisPeriod = true;
+            UpdateTimestamp();
+        }
+
+        /// <summary>
+        /// Resets the payment status and advances to next period (called by scheduler after period ends)
+        /// </summary>
+        public void AdvanceToNextPeriod()
+        {
+            IsPaidThisPeriod = false;
+            NextExecutionDate = CalculateNextExecutionDate(NextExecutionDate);
+            UpdateTimestamp();
+        }
+
+        /// <summary>
+        /// Checks if this transaction is due within the specified number of days
+        /// </summary>
+        public bool IsDueWithinDays(int days)
+        {
+            if (!IsActive) return false;
+            
+            var targetDate = DateTime.UtcNow.Date.AddDays(days);
+            return NextExecutionDate.Date <= targetDate && !IsPaidThisPeriod;
         }
     }
 }

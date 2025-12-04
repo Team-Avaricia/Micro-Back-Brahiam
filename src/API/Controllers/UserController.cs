@@ -89,6 +89,34 @@ namespace API.Controllers
             }
         }
 
+        /// <summary>
+        /// Get telegramId for a user given their userId (needed for notifications)
+        /// </summary>
+        [HttpGet("{userId}/telegram")]
+        public async Task<IActionResult> GetUserTelegramId(string userId)
+        {
+            try
+            {
+                var userGuid = Guid.Parse(userId);
+                var user = await _userRepository.GetByIdAsync(userGuid);
+
+                if (user == null)
+                    return NotFound(new { error = "User not found" });
+
+                if (user.TelegramId == null)
+                    return NotFound(new { error = "User does not have Telegram linked" });
+
+                return Ok(new
+                {
+                    telegramId = user.TelegramId
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         [HttpGet("telegram/{telegramId}")]
         public async Task<IActionResult> GetUserByTelegramId(long telegramId)
         {
@@ -156,6 +184,17 @@ namespace API.Controllers
                     .Where(t => t.Type == Core.Domain.Enums.TransactionType.Expense)
                     .Sum(t => t.Amount);
 
+                // Calculate real balance based on transactions
+                var calculatedBalance = totalIncome - totalExpenses;
+
+                // Sync the database if balance is out of sync
+                if (user.CurrentBalance != calculatedBalance)
+                {
+                    var difference = calculatedBalance - user.CurrentBalance;
+                    user.UpdateBalance(difference);
+                    await _userRepository.UpdateAsync(user);
+                }
+
                 var lastTransaction = transactionList
                     .OrderByDescending(t => t.Date)
                     .FirstOrDefault();
@@ -164,7 +203,7 @@ namespace API.Controllers
                 {
                     totalIncome,
                     totalExpenses,
-                    currentBalance = user.CurrentBalance,
+                    currentBalance = calculatedBalance,
                     lastTransactionDate = lastTransaction?.Date
                 });
             }

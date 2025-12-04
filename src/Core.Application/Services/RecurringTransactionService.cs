@@ -196,5 +196,26 @@ namespace Core.Application.Services
             _logger.LogInformation("Processing completed. Successful: {Processed}, Failed: {Failed}", 
                 processed, failed);
         }
+
+        public async Task MarkAsPaidAsync(Guid id)
+        {
+            var recurring = await _recurringRepository.GetByIdAsync(id);
+            if (recurring == null)
+            {
+                _logger.LogWarning("Attempt to mark as paid non-existent recurring transaction: {RecurringId}", id);
+                throw new InvalidOperationException("Recurring transaction not found");
+            }
+
+            recurring.MarkAsPaid();
+            await _recurringRepository.UpdateAsync(recurring);
+            
+            _logger.LogInformation("Recurring transaction marked as paid: {RecurringId}", id);
+        }
+
+        public async Task<IEnumerable<RecurringTransaction>> GetUpcomingAsync(Guid userId, int days = 3)
+        {
+            var recurring = await _recurringRepository.GetByUserIdAsync(userId);
+            return recurring.Where(r => r.IsDueWithinDays(days)).OrderBy(r => r.NextExecutionDate);
+        }
     }
 }

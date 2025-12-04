@@ -32,7 +32,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Category")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -89,7 +88,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -102,6 +100,12 @@ namespace Infrastructure.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPaidThisPeriod")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastPaidDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("NextExecutionDate")
                         .HasColumnType("timestamp with time zone");
@@ -138,7 +142,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CreatedByIp")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -152,7 +155,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RevokedByIp")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -239,7 +241,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -289,7 +290,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -302,7 +302,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("TelegramUsername")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -338,7 +337,7 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Core.Domain.Entities.RecurringTransaction", b =>
                 {
                     b.HasOne("Core.Domain.Entities.User", "User")
-                        .WithMany()
+                        .WithMany("RecurringTransactions")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -382,6 +381,8 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Core.Domain.Entities.User", b =>
                 {
                     b.Navigation("FinancialRules");
+
+                    b.Navigation("RecurringTransactions");
 
                     b.Navigation("RefreshTokens");
 
