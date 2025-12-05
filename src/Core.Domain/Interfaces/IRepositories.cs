@@ -20,7 +20,7 @@ namespace Core.Domain.Interfaces
     public interface ITransactionRepository
     {
         Task<Transaction?> GetByIdAsync(Guid id);
-        Task<IEnumerable<Transaction>> GetByUserIdAsync(Guid userId);
+        Task<IEnumerable<Transaction>> GetByUserIdAsync(Guid userId, TransactionType? type = null);
         Task<IEnumerable<Transaction>> GetByUserAndPeriodAsync(Guid userId, DateTime start, DateTime end, string? category = null);
         Task AddAsync(Transaction transaction);
         Task DeleteAsync(Guid id);

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
 using Core.Domain.Interfaces;
+using Core.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
@@ -57,13 +58,44 @@ namespace API.Controllers
         }
 
         [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetUserTransactions(string userId)
+        public async Task<IActionResult> GetUserTransactions(
+            string userId,
+            [FromQuery] string? type = null)
         {
             try
             {
                 var userGuid = Guid.Parse(userId);
-                var transactions = await _transactionRepository.GetByUserIdAsync(userGuid);
-                return Ok(transactions);
+                
+                // Parse type parameter if provided
+                TransactionType? transactionType = null;
+                if (!string.IsNullOrEmpty(type))
+                {
+                    if (Enum.TryParse<TransactionType>(type, ignoreCase: true, out var parsedType))
+                    {
+                        transactionType = parsedType;
+                    }
+                    else
+                    {
+                        return BadRequest(new { error = $"Invalid transaction type '{type}'. Valid values are: Income, Expense" });
+                    }
+                }
+                
+                var transactions = await _transactionRepository.GetByUserIdAsync(userGuid, transactionType);
+                
+                // Map to response with all required fields
+                var response = transactions.Select(t => new
+                {
+                    id = t.Id,
+                    userId = t.UserId,
+                    amount = t.Amount,
+                    type = t.Type.ToString(),
+                    category = t.Category,
+                    description = t.Description,
+                    source = t.Source.ToString(),
+                    createdAt = t.CreatedAt
+                });
+                
+                return Ok(response);
             }
             catch (Exception ex)
             {

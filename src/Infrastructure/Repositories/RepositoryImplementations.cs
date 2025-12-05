@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Core.Domain.Entities;
 using Core.Domain.Interfaces;
+using Core.Domain.Enums;
 using Infrastructure.Persistence;
 
 namespace Infrastructure.Repositories
@@ -75,10 +76,17 @@ namespace Infrastructure.Repositories
             return await _context.Transactions.FindAsync(id);
         }
 
-        public async Task<IEnumerable<Transaction>> GetByUserIdAsync(Guid userId)
+        public async Task<IEnumerable<Transaction>> GetByUserIdAsync(Guid userId, TransactionType? type = null)
         {
-            return await _context.Transactions
-                .Where(t => t.UserId == userId)
+            var query = _context.Transactions
+                .Where(t => t.UserId == userId);
+
+            if (type.HasValue)
+            {
+                query = query.Where(t => t.Type == type.Value);
+            }
+
+            return await query
                 .OrderByDescending(t => t.Date)
                 .ToListAsync();
         }

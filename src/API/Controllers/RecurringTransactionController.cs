@@ -96,7 +96,10 @@ namespace API.Controllers
                         frequency = r.Frequency.ToString(),
                         dayOfMonth = r.DayOfMonth,
                         nextExecutionDate = r.NextExecutionDate,
-                        isActive = r.IsActive
+                        isActive = r.IsActive,
+                        lastPaidDate = r.LastPaidDate,
+                        isPaidThisPeriod = r.IsPaidThisPeriod,
+                        paymentStatus = r.PaymentStatus.ToString()
                     }),
                     totalMonthlyIncome,
                     totalMonthlyExpenses
@@ -189,6 +192,77 @@ namespace API.Controllers
                 {
                     success = true,
                     message = "Recurring transaction deleted"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Marks a recurring transaction as paid for the current period
+        /// </summary>
+        [HttpPatch("{id}/mark-paid")]
+        public async Task<IActionResult> MarkAsPaid(string id)
+        {
+            try
+            {
+                var recurringGuid = Guid.Parse(id);
+                await _recurringService.MarkAsPaidAsync(recurringGuid);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Recurring transaction marked as paid"
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Gets recurring transactions that are due within the specified number of days (for alerts/reminders)
+        /// </summary>
+        [HttpGet("user/{userId}/upcoming")]
+        public async Task<IActionResult> GetUpcoming(
+            string userId,
+            [FromQuery] int days = 3)
+        {
+            try
+            {
+                var userGuid = Guid.Parse(userId);
+                var recurring = await _recurringService.GetByUserIdAsync(userGuid);
+                
+                var upcomingList = recurring
+                    .Where(r => r.IsDueWithinDays(days))
+                    .OrderBy(r => r.NextExecutionDate)
+                    .ToList();
+
+                return Ok(new
+                {
+                    data = upcomingList.Select(r => new
+                    {
+                        id = r.Id,
+                        amount = r.Amount,
+                        type = r.Type.ToString(),
+                        category = r.Category,
+                        description = r.Description,
+                        frequency = r.Frequency.ToString(),
+                        nextExecutionDate = r.NextExecutionDate,
+                        daysUntilDue = (r.NextExecutionDate.Date - DateTime.UtcNow.Date).Days,
+                        isActive = r.IsActive,
+                        isPaidThisPeriod = r.IsPaidThisPeriod,
+                        paymentStatus = r.PaymentStatus.ToString()
+                    }),
+                    count = upcomingList.Count,
+                    totalAmount = upcomingList.Sum(r => r.Amount)
                 });
             }
             catch (Exception ex)

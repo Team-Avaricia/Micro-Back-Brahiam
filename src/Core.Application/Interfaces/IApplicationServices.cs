@@ -41,6 +41,8 @@ namespace Core.Application.Interfaces
         Task ToggleActiveAsync(Guid id, bool isActive);
         Task DeleteAsync(Guid id);
         Task ProcessDueTransactionsAsync();
+        Task MarkAsPaidAsync(Guid id);
+        Task<IEnumerable<RecurringTransaction>> GetUpcomingAsync(Guid userId, int days = 3);
     }
 
     public interface ITelegramService
