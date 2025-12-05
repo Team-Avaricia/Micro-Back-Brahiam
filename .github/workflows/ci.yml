@@ -1,14 +1,12 @@
 name: CI/CD - Build and Deploy API
 
-# 1. Definir el evento
 on:
   push:
     branches:
       - main
 
-# 2. Definir los trabajos
 jobs:
-  # --- TRABAJO 1: CI (Construcción) ---
+  # --- JOB 1: CI (Sin cambios, esto funcionaba bien) ---
   build-and-push:
     runs-on: ubuntu-latest
     steps:
@@ -32,41 +30,50 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/net-api-finanzas:latest
 
-  # --- TRABAJO 2: CD (Despliegue) ---
+  # --- JOB 2: CD (MEJORADO) ---
   deploy:
-    needs: build-and-push # Espera a que la construcción termine con éxito
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # A. Copiar el archivo deploy-compose.yml al VPS
+      # 1. Crear directorio y probar conexión (Soluciona error de carpeta inexistente)
+      - name: Create App Directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            mkdir -p /home/${{ secrets.SSH_USER }}/finanzas-api
+            echo "Directorio verificado."
+
+      # 2. Copiar el archivo (Ahora es seguro porque la carpeta existe)
       - name: Copy file via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
           source: "deploy-compose.yml"
           target: "/home/${{ secrets.SSH_USER }}/finanzas-api"
 
-      # B. Conectarse por SSH y ejecutar Docker Compose
-      - name: Execute remote commands via SSH
+      # 3. Ejecutar Docker Compose
+      - name: Deploy Container
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
           script: |
-            # Navegar al directorio (el SCP crea la carpeta si no existe, pero aseguramos)
             cd /home/${{ secrets.SSH_USER }}/finanzas-api
-            
-            # Descargar la imagen más reciente
-            echo "Descargando imagen nueva..."
+            echo "1. Bajando nueva imagen..."
             docker compose -f deploy-compose.yml pull
-            
-            # Reiniciar el servicio en segundo plano (-d)
-            echo "Desplegando contenedor..."
+            echo "2. Reiniciando servicios..."
             docker compose -f deploy-compose.yml up -d
-            
-            echo "¡Despliegue completado!"
+            echo "3. Limpiando imágenes viejas..."
+            docker image prune -f
