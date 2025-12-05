@@ -1,0 +1,42 @@
+# .github/workflows/ci.yml
+
+name: CI - Build and Publish API
+
+# 1. Definir el evento que dispara el workflow
+on:
+  push:
+    branches:
+      - main # Se dispara cuando se hace push a la rama 'main'
+
+# 2. Definir los trabajos (jobs)
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # Se ejecuta en una máquina virtual de Ubuntu
+
+    steps:
+      # A. Checkout: Obtener el código
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # B. Configurar Docker Buildx (Herramienta de construcción)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      # C. Login en Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # D. Construir y Publicar la imagen
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # El contexto es la raíz del repositorio
+          file: ./src/API/Dockerfile # Ruta del Dockerfile, asumiendo que lo moviste a src/API
+          push: true # Esto sube la imagen al registro
+          tags: ${{ secrets.DOCKER_USERNAME }}/net-api-finanzas:latest # El tag de la imagen
+          # IMPORTANTE: Asegúrate de que esta ruta sea correcta para tu Dockerfile:
+          # Si tu Dockerfile está en la raíz, usa: file: ./Dockerfile
+          # Según tu estructura, debería estar en el directorio de la API. Asumiré que lo pones allí.
