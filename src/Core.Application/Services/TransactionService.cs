@@ -21,7 +21,20 @@ namespace Core.Application.Services
 
         public async Task<Transaction> CreateTransactionAsync(CreateTransactionRequest request)
         {
-            var userId = Guid.Parse(request.UserId);
+            Guid userId;
+
+            // Try to parse as GUID first, if fails, treat as email
+            if (!Guid.TryParse(request.UserId, out userId))
+            {
+                // UserId is an email, find the user
+                var userByEmail = await _userRepository.GetByEmailAsync(request.UserId);
+                if (userByEmail == null)
+                {
+                    throw new InvalidOperationException($"User with email '{request.UserId}' not found");
+                }
+                userId = userByEmail.Id;
+            }
+
             var user = await _userRepository.GetByIdAsync(userId);
 
             if (user == null)

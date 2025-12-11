@@ -39,7 +39,7 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("v1", new() { Title = "Juez IA - MS Core API", Version = "v1" });
+        c.SwaggerDoc("v1", new() { Title = "Riwi Wallet - MS Core API", Version = "v1" });
     });
 
     // Database Configuration
@@ -71,18 +71,46 @@ try
     })
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = false; // Set to true in production
+        options.RequireHttpsMetadata = false;
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(secretKey),
             ValidateIssuer = true,
-            ValidIssuer = jwtSettings["Issuer"],
             ValidateAudience = true,
-            ValidAudience = jwtSettings["Audience"],
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
+            RequireExpirationTime = true,
+            RequireSignedTokens = true
+        };
+
+        // Logging detallado
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Log.Error($"❌ JWT Authentication failed: {context.Exception.Message}");
+                Log.Error($"Exception: {context.Exception.GetType().Name}");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Log.Information("✅ JWT Token validated successfully");
+                var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
+                if (claims != null)
+                {
+                    Log.Information($"Claims: {string.Join(", ", claims)}");
+                }
+                return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                var authHeader = context.Request.Headers["Authorization"].ToString();
+                if (!string.IsNullOrEmpty(authHeader))
+                {
+                    Log.Information($"📨 Received Authorization header");
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -95,7 +123,7 @@ try
         {
             policy.WithOrigins(
                 "http://localhost:8080",  // MS AI Worker (Spring Boot)
-                "http://localhost:3000",  // Dashboard (Vue.js)
+                "http://localhost:5173",  // Dashboard (Vue.js)
                 "http://localhost:8081"   // Gateway (Spring Boot)
             )
             .AllowAnyHeader()
@@ -120,8 +148,7 @@ try
 
     // Enable CORS
     app.UseCors("AllowMicroservices");
-
-    // Authentication DEBE ir antes de Authorization
+    
     app.UseAuthentication();
     app.UseAuthorization();
 

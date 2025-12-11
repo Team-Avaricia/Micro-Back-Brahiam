@@ -75,7 +75,7 @@ namespace API.Controllers
             }
         }
 
-        [Authorize]
+        // [Authorize] // ⚠️ DESACTIVADO PARA DESARROLLO
         [HttpPost("revoke-token")]
         public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest request)
         {

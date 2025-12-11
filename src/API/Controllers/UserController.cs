@@ -167,7 +167,20 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
+                Guid userGuid;
+
+                // Try to parse as GUID first, if fails, treat as email
+                if (!Guid.TryParse(userId, out userGuid))
+                {
+                    // userId is an email, find the user
+                    var userByEmail = await _userRepository.GetByEmailAsync(userId);
+                    if (userByEmail == null)
+                    {
+                        return NotFound(new { error = $"User with email '{userId}' not found" });
+                    }
+                    userGuid = userByEmail.Id;
+                }
+
                 var user = await _userRepository.GetByIdAsync(userGuid);
 
                 if (user == null)
