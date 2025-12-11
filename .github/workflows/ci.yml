@@ -6,7 +6,6 @@ on:
       - main
 
 jobs:
-  # --- JOB 1: CI (Sin cambios, esto funcionaba bien) ---
   build-and-push:
     runs-on: ubuntu-latest
     steps:
@@ -47,7 +46,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            mkdir -p /home/${{ secrets.SSH_USER }}/finanzas-api
+            mkdir -p /home/${{ secrets.SSH_USER }}/Riwi-wallet
             echo "Directorio verificado."
 
       # 2. Copiar el archivo (Ahora es seguro porque la carpeta existe)
@@ -59,7 +58,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           source: "deploy-compose.yml"
-          target: "/home/${{ secrets.SSH_USER }}/finanzas-api"
+          target: "/home/${{ secrets.SSH_USER }}/Riwi-wallet"
 
       # 3. Ejecutar Docker Compose
       - name: Deploy Container
@@ -70,7 +69,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            cd /home/${{ secrets.SSH_USER }}/finanzas-api
+            cd /home/${{ secrets.SSH_USER }}/Riwi-wallet
             echo "1. Bajando nueva imagen..."
             docker compose -f deploy-compose.yml pull
             echo "2. Reiniciando servicios..."
