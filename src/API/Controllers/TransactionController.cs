@@ -156,9 +156,8 @@ namespace API.Controllers
                 user.UpdateBalance(balanceChange);
                 await _userRepository.UpdateAsync(user);
 
-                // TODO: Implement DeleteAsync in ITransactionRepository
-                // For now, we assume the repo will be updated or this logic is handled elsewhere
-                // await _transactionRepository.DeleteAsync(transactionGuid); 
+                // Delete the transaction from the database
+                await _transactionRepository.DeleteAsync(transactionGuid);
 
                 return Ok(new { message = "Transaction deleted and balance reverted successfully" });
             }
