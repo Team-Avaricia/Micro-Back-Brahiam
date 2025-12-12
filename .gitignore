@@ -126,3 +126,5 @@ secrets.json
 # ngrok
 ngrok.exe
 ngrok.yml
+docs/API-DOCUMENTATION.md
+docs/CHANGELOG-remove-recurring.md

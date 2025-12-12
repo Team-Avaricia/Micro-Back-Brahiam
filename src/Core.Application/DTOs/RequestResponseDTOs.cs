@@ -204,4 +204,23 @@ namespace Core.Application.DTOs
         [Range(0, double.MaxValue)]
         public decimal InitialBalance { get; set; } = 0;
     }
+
+    /// <summary>
+    /// Response for financial rule progress/budget tracking
+    /// Shows how much has been spent in the rule's period and how much is remaining
+    /// </summary>
+    public class RuleProgressResponse
+    {
+        public Guid RuleId { get; set; }
+        public string Category { get; set; }
+        public string Period { get; set; }
+        public decimal Limit { get; set; }
+        public decimal Spent { get; set; }
+        public decimal Remaining { get; set; }
+        public double PercentUsed { get; set; }
+        public DateTime PeriodStartDate { get; set; }
+        public DateTime PeriodEndDate { get; set; }
+        public bool IsOverBudget { get; set; }
+        public string Status { get; set; } // "On Track", "Warning", "Over Budget"
+    }
 }

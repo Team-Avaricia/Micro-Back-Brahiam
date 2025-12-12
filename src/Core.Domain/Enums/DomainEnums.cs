@@ -26,6 +26,7 @@ namespace Core.Domain.Enums
     {
         Daily,
         Weekly,
+        Biweekly,
         Monthly,
         Yearly
     }

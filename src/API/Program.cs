@@ -6,9 +6,11 @@ using Core.Application.Services;
 using Core.Application.Interfaces;
 using System.Text.Json.Serialization;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using API.Authentication;
 
 // Configurar Serilog ANTES de crear el builder
 Log.Logger = new LoggerConfiguration()
@@ -60,15 +62,30 @@ try
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<ITelegramService, TelegramService>();
 
-    // JWT Authentication Configuration
+    // Authentication Configuration - Dual scheme: JWT + API Key for internal services
     var jwtSettings = builder.Configuration.GetSection("Jwt");
-    var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
+    var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"] ?? "");
 
     builder.Services.AddAuthentication(options =>
     {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        // Use a policy scheme that chooses between JWT and API Key
+        options.DefaultAuthenticateScheme = "JwtOrApiKey";
+        options.DefaultChallengeScheme = "JwtOrApiKey";
     })
+    .AddPolicyScheme("JwtOrApiKey", "JWT or API Key", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            // If X-Api-Key header is present, use API Key authentication
+            if (context.Request.Headers.ContainsKey("X-Api-Key"))
+            {
+                return "ApiKey";
+            }
+            // Otherwise use JWT
+            return JwtBearerDefaults.AuthenticationScheme;
+        };
+    })
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", null)
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = false;
@@ -76,11 +93,15 @@ try
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(secretKey),
             ValidateIssuer = true,
+            ValidIssuer = jwtSettings["Issuer"],
             ValidateAudience = true,
+            ValidAudience = jwtSettings["Audience"],
             ValidateLifetime = true,
             RequireExpirationTime = true,
-            RequireSignedTokens = true
+            RequireSignedTokens = true,
+            ClockSkew = TimeSpan.Zero
         };
 
         // Logging detallado
@@ -89,26 +110,11 @@ try
             OnAuthenticationFailed = context =>
             {
                 Log.Error($"❌ JWT Authentication failed: {context.Exception.Message}");
-                Log.Error($"Exception: {context.Exception.GetType().Name}");
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
                 Log.Information("✅ JWT Token validated successfully");
-                var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
-                if (claims != null)
-                {
-                    Log.Information($"Claims: {string.Join(", ", claims)}");
-                }
-                return Task.CompletedTask;
-            },
-            OnMessageReceived = context =>
-            {
-                var authHeader = context.Request.Headers["Authorization"].ToString();
-                if (!string.IsNullOrEmpty(authHeader))
-                {
-                    Log.Information($"📨 Received Authorization header");
-                }
                 return Task.CompletedTask;
             }
         };
@@ -134,12 +140,8 @@ try
     var app = builder.Build();
 
     // Configure the HTTP request pipeline
-    if (app.Environment.IsDevelopment())
-    {
-    }
-
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Juez IA - MS Core API v1"));
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Riwi Wallet - MS Core API v1"));
 
     // Agregar Serilog request logging
     app.UseSerilogRequestLogging();

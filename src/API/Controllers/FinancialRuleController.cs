@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Core.Application.DTOs;
 using Core.Domain.Entities;
 using Core.Domain.Interfaces;
+using Core.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers
@@ -13,10 +14,12 @@ namespace API.Controllers
     public class FinancialRuleController : ControllerBase
     {
         private readonly IFinancialRuleRepository _ruleRepository;
+        private readonly ITransactionRepository _transactionRepository;
 
-        public FinancialRuleController(IFinancialRuleRepository ruleRepository)
+        public FinancialRuleController(IFinancialRuleRepository ruleRepository, ITransactionRepository transactionRepository)
         {
             _ruleRepository = ruleRepository;
+            _transactionRepository = transactionRepository;
         }
 
         [HttpPost]
@@ -122,6 +125,193 @@ namespace API.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// Gets the progress of a financial rule, showing how much has been spent
+        /// in the current period and how much budget remains.
+        /// </summary>
+        [HttpGet("{id}/progress")]
+        public async Task<IActionResult> GetRuleProgress(string id)
+        {
+            try
+            {
+                var ruleGuid = Guid.Parse(id);
+                var rule = await _ruleRepository.GetByIdAsync(ruleGuid);
+
+                if (rule == null)
+                    return NotFound(new { error = "Rule not found" });
+
+                // Calculate period dates based on rule period type
+                var (periodStart, periodEnd) = CalculatePeriodDates(rule.Period);
+
+                // Get transactions for this user, category, and period
+                var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
+                    rule.UserId, 
+                    periodStart, 
+                    periodEnd, 
+                    rule.Category == "General" ? null : rule.Category
+                );
+
+                // Sum only expenses
+                decimal spent = 0;
+                foreach (var tx in transactions)
+                {
+                    if (tx.Type == TransactionType.Expense)
+                    {
+                        spent += tx.Amount;
+                    }
+                }
+
+                var remaining = rule.AmountLimit - spent;
+                var percentUsed = rule.AmountLimit > 0 ? (double)(spent / rule.AmountLimit) * 100 : 0;
+                var isOverBudget = spent > rule.AmountLimit;
+
+                // Determine status
+                string status;
+                if (isOverBudget)
+                    status = "Over Budget";
+                else if (percentUsed >= 80)
+                    status = "Warning";
+                else
+                    status = "On Track";
+
+                var response = new RuleProgressResponse
+                {
+                    RuleId = rule.Id,
+                    Category = rule.Category ?? "General",
+                    Period = rule.Period.ToString(),
+                    Limit = rule.AmountLimit,
+                    Spent = spent,
+                    Remaining = remaining > 0 ? remaining : 0,
+                    PercentUsed = Math.Round(percentUsed, 1),
+                    PeriodStartDate = periodStart,
+                    PeriodEndDate = periodEnd,
+                    IsOverBudget = isOverBudget,
+                    Status = status
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Gets the progress of all active rules for a user
+        /// </summary>
+        [HttpGet("user/{userId}/progress")]
+        public async Task<IActionResult> GetAllRulesProgress(string userId)
+        {
+            try
+            {
+                var userGuid = Guid.Parse(userId);
+                var rules = await _ruleRepository.GetActiveRulesByUserIdAsync(userGuid);
+                var progressList = new System.Collections.Generic.List<RuleProgressResponse>();
+
+                foreach (var rule in rules)
+                {
+                    var (periodStart, periodEnd) = CalculatePeriodDates(rule.Period);
+
+                    var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
+                        rule.UserId,
+                        periodStart,
+                        periodEnd,
+                        rule.Category == "General" ? null : rule.Category
+                    );
+
+                    decimal spent = 0;
+                    foreach (var tx in transactions)
+                    {
+                        if (tx.Type == TransactionType.Expense)
+                        {
+                            spent += tx.Amount;
+                        }
+                    }
+
+                    var remaining = rule.AmountLimit - spent;
+                    var percentUsed = rule.AmountLimit > 0 ? (double)(spent / rule.AmountLimit) * 100 : 0;
+                    var isOverBudget = spent > rule.AmountLimit;
+
+                    string status;
+                    if (isOverBudget)
+                        status = "Over Budget";
+                    else if (percentUsed >= 80)
+                        status = "Warning";
+                    else
+                        status = "On Track";
+
+                    progressList.Add(new RuleProgressResponse
+                    {
+                        RuleId = rule.Id,
+                        Category = rule.Category ?? "General",
+                        Period = rule.Period.ToString(),
+                        Limit = rule.AmountLimit,
+                        Spent = spent,
+                        Remaining = remaining > 0 ? remaining : 0,
+                        PercentUsed = Math.Round(percentUsed, 1),
+                        PeriodStartDate = periodStart,
+                        PeriodEndDate = periodEnd,
+                        IsOverBudget = isOverBudget,
+                        Status = status
+                    });
+                }
+
+                return Ok(progressList);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Calculates the start and end dates for a given period type
+        /// </summary>
+        private (DateTime start, DateTime end) CalculatePeriodDates(RulePeriod period)
+        {
+            var now = DateTime.UtcNow;
+            DateTime start, end;
+
+            switch (period)
+            {
+                case RulePeriod.Daily:
+                    start = now.Date;
+                    end = start.AddDays(1);
+                    break;
+                case RulePeriod.Weekly:
+                    // Start from Monday of current week
+                    int daysFromMonday = ((int)now.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+                    start = now.Date.AddDays(-daysFromMonday);
+                    end = start.AddDays(7);
+                    break;
+                case RulePeriod.Biweekly:
+                    // Start from 1st or 15th of month
+                    if (now.Day >= 15)
+                    {
+                        start = new DateTime(now.Year, now.Month, 15);
+                        end = new DateTime(now.Year, now.Month, 1).AddMonths(1);
+                    }
+                    else
+                    {
+                        start = new DateTime(now.Year, now.Month, 1);
+                        end = new DateTime(now.Year, now.Month, 15);
+                    }
+                    break;
+                case RulePeriod.Yearly:
+                    start = new DateTime(now.Year, 1, 1);
+                    end = start.AddYears(1);
+                    break;
+                case RulePeriod.Monthly:
+                default:
+                    start = new DateTime(now.Year, now.Month, 1);
+                    end = start.AddMonths(1);
+                    break;
+            }
+
+            return (start, end);
         }
     }
 }
