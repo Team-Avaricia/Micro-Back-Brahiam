@@ -119,11 +119,13 @@ namespace Core.Application.Services
             var now = DateTime.UtcNow;
             return period switch
             {
-                RulePeriod.Daily => (now.Date, now.Date.AddDays(1)),
                 RulePeriod.Weekly => (now.Date.AddDays(-(int)now.DayOfWeek), now.Date.AddDays(7 - (int)now.DayOfWeek)),
+                RulePeriod.Biweekly => now.Day >= 15 
+                    ? (new DateTime(now.Year, now.Month, 15), new DateTime(now.Year, now.Month, 1).AddMonths(1))
+                    : (new DateTime(now.Year, now.Month, 1), new DateTime(now.Year, now.Month, 15)),
                 RulePeriod.Monthly => (new DateTime(now.Year, now.Month, 1), new DateTime(now.Year, now.Month, 1).AddMonths(1)),
                 RulePeriod.Yearly => (new DateTime(now.Year, 1, 1), new DateTime(now.Year + 1, 1, 1)),
-                _ => (now.Date, now.Date.AddDays(1))
+                _ => (new DateTime(now.Year, now.Month, 1), new DateTime(now.Year, now.Month, 1).AddMonths(1)) // Default to Monthly
             };
         }
     }

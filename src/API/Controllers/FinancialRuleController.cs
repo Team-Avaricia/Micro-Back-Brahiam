@@ -277,10 +277,6 @@ namespace API.Controllers
 
             switch (period)
             {
-                case RulePeriod.Daily:
-                    start = now.Date;
-                    end = start.AddDays(1);
-                    break;
                 case RulePeriod.Weekly:
                     // Start from Monday of current week
                     int daysFromMonday = ((int)now.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;

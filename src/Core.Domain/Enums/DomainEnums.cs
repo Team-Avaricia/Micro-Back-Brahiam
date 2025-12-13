@@ -24,7 +24,6 @@ namespace Core.Domain.Enums
 
     public enum RulePeriod
     {
-        Daily,
         Weekly,
         Biweekly,
         Monthly,
