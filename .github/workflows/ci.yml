@@ -1,13 +1,13 @@
 name: CI/CD - API .NET
 
-# Se ejecuta en push a main o development
+# Runs on push to main or development
 on:
   push:
     branches:
       - main
-      - development
+      - develop
 
-# Variables de entorno globales
+# Global environment variables
 env:
   DOCKER_IMAGE: juandavidbarr/net-api-finanzas
   CONTAINER_NAME: netapi_gestor_finanzas
@@ -17,34 +17,30 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Checkout del código
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Login en Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 3. Construir y subir imagen Docker
       - name: Build and Push Docker Image
         run: |
-          # Tag con el SHA del commit (identificador único)
+          # Tag with commit SHA (unique identifier)
           IMAGE_TAG="${{ github.sha }}"
           
-          # Construir imagen (IMPORTANTE: context en src/API/)
+          # Build image (IMPORTANT: context in src/API/)
           docker build -t ${{ env.DOCKER_IMAGE }}:$IMAGE_TAG -f src/API/Dockerfile .
           docker build -t ${{ env.DOCKER_IMAGE }}:latest -f src/API/Dockerfile .
           
-          # Subir a Docker Hub
+          # Push to Docker Hub
           docker push ${{ env.DOCKER_IMAGE }}:$IMAGE_TAG
           docker push ${{ env.DOCKER_IMAGE }}:latest
           
-          echo "✅ Imagen subida: ${{ env.DOCKER_IMAGE }}:$IMAGE_TAG"
+          echo "Image uploaded: ${{ env.DOCKER_IMAGE }}:$IMAGE_TAG"
 
-      # 4. Desplegar en VPS
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -52,30 +48,30 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "🚀 Iniciando despliegue de API .NET..."
+            echo "Starting .NET API deployment..."
             
-            # Detener y eliminar contenedor anterior (si existe)
+            # Stop and remove previous container (if exists)
             docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
             docker rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
             
-            # Descargar imagen nueva
+            # Pull new image
             docker pull ${{ env.DOCKER_IMAGE }}:latest
             
-            # Levantar nuevo contenedor
+            # Start new container
             docker run -d \
               --name ${{ env.CONTAINER_NAME }} \
               --restart always \
               --network riwi_network \
               -p 5001:8080 \
               -e ASPNETCORE_ENVIRONMENT=Production \
-              -e ConnectionStrings__DefaultConnection="Host=db;Database=riwiwallet_db;Username=riwi_user;Password=J9YoXTAy77bVPxwMtArRHfXDC" \
+              -e ConnectionStrings__DefaultConnection="Host=${{ secrets.DB_HOST }};Database=${{ secrets.DB_NAME }};Username=${{ secrets.DB_USER }};Password=${{ secrets.DB_PASSWORD }}" \
               --memory="512m" \
               ${{ env.DOCKER_IMAGE }}:latest
             
-            echo "✅ Contenedor desplegado exitosamente"
+            echo "Container deployed successfully"
             
-            # Verificar que está corriendo
+            # Verify it's running
             docker ps | grep ${{ env.CONTAINER_NAME }}
             
-            # Limpiar imágenes antiguas para liberar espacio (VPS 4GB RAM)
+            # Clean old images to free space
             docker image prune -af --filter "until=24h"
