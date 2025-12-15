@@ -5,7 +5,7 @@ namespace Core.Application.DTOs
 {
     public class GenerateTelegramLinkResponse
     {
-        public string Link { get; set; }
+        public string LinkUrl { get; set; }
         public string Code { get; set; }
         public DateTime ExpiresAt { get; set; }
         public int ExpiresInSeconds { get; set; }

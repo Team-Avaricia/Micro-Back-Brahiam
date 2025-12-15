@@ -27,7 +27,19 @@ namespace Core.Application.Services
 
         public async Task<SpendingValidationResponse> ValidateSpendingAsync(SpendingValidationRequest request)
         {
-            var userId = Guid.Parse(request.UserId);
+            // Try to parse as GUID first
+            Guid userId;
+            if (!Guid.TryParse(request.UserId, out userId))
+            {
+                // If not a GUID, treat as email
+                var userByEmail = await _userRepository.GetByEmailAsync(request.UserId);
+                if (userByEmail == null)
+                {
+                    return CreateRejectionResponse("User not found");
+                }
+                userId = userByEmail.Id;
+            }
+
             var user = await _userRepository.GetByIdAsync(userId);
 
             if (user == null)

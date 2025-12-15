@@ -20,21 +20,6 @@ namespace Infrastructure.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<User>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.PhoneNumber).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.CurrentBalance).HasColumnType("decimal(18,2)");
-                entity.Property(e => e.PasswordHash).HasMaxLength(500);
-                entity.Property(e => e.TelegramUsername).HasMaxLength(100);
-                
-                entity.HasIndex(e => e.Email).IsUnique();
-                entity.HasIndex(e => e.PhoneNumber).IsUnique();
-                entity.HasIndex(e => e.TelegramId).IsUnique().HasFilter("\"TelegramId\" IS NOT NULL");
-            });
-
             modelBuilder.Entity<Transaction>(entity =>
             {
                 entity.HasKey(e => e.Id);
