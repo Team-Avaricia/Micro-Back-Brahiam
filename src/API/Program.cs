@@ -38,6 +38,13 @@ try
             // Configurar para que los Enums se serialicen como strings en lugar de números
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
+
+    // Configure routing options to handle encoded characters in URLs
+    builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteOptions>(options =>
+    {
+        options.ConstraintMap["regex"] = typeof(Microsoft.AspNetCore.Routing.Constraints.RegexRouteConstraint);
+    });
+
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
@@ -94,6 +101,12 @@ try
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+            // Use resolver to handle tokens with or without 'kid' header
+            IssuerSigningKeyResolver = (token, securityToken, kid, validationParameters) =>
+            {
+                // Always return the configured key, regardless of 'kid' value
+                return new[] { new SymmetricSecurityKey(secretKey) };
+            },
             ValidateIssuer = true,
             ValidIssuer = jwtSettings["Issuer"],
             ValidateAudience = true,

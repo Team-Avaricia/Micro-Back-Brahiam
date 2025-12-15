@@ -28,6 +28,22 @@ namespace API.Controllers
             _userRepository = userRepository;
         }
 
+        /// <summary>
+        /// Resolves a user identifier (GUID or email) to a GUID
+        /// </summary>
+        private async Task<Guid?> ResolveUserIdAsync(string userIdentifier)
+        {
+            // Try to parse as GUID first
+            if (Guid.TryParse(userIdentifier, out var guid))
+            {
+                return guid;
+            }
+
+            // If not a GUID, treat as email
+            var user = await _userRepository.GetByEmailAsync(userIdentifier);
+            return user?.Id;
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateTransaction([FromBody] CreateTransactionRequest request)
         {
@@ -64,18 +80,10 @@ namespace API.Controllers
         {
             try
             {
-                Guid userGuid;
-
-                // Try to parse as GUID first, if fails, treat as email
-                if (!Guid.TryParse(userId, out userGuid))
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
                 {
-                    // userId is an email, find the user
-                    var user = await _userRepository.GetByEmailAsync(userId);
-                    if (user == null)
-                    {
-                        return NotFound(new { error = $"User with email '{userId}' not found" });
-                    }
-                    userGuid = user.Id;
+                    return NotFound(new { error = "User not found" });
                 }
 
                 // Parse type parameter if provided
@@ -92,7 +100,7 @@ namespace API.Controllers
                     }
                 }
                 
-                var transactions = await _transactionRepository.GetByUserIdAsync(userGuid, transactionType);
+                var transactions = await _transactionRepository.GetByUserIdAsync(userGuid.Value, transactionType);
                 
                 // Map to response with all required fields
                 var response = transactions.Select(t => new
@@ -175,11 +183,16 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
                 var utcStart = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
                 var utcEnd = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
                 var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
-                    userGuid, utcStart, utcEnd);
+                    userGuid.Value, utcStart, utcEnd);
 
                 var transactionList = transactions.ToList();
                 var total = transactionList
@@ -213,12 +226,17 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
                 var startOfDay = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
                 var endOfDay = DateTime.SpecifyKind(date.Date.AddDays(1), DateTimeKind.Utc);
 
                 var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
-                    userGuid, startOfDay, endOfDay);
+                    userGuid.Value, startOfDay, endOfDay);
 
                 var transactionList = transactions.ToList();
                 var total = transactionList
@@ -250,32 +268,68 @@ namespace API.Controllers
         [HttpGet("user/{userId}/search")]
         public async Task<IActionResult> SearchTransactions(
             string userId,
-            [FromQuery] string query)
+            [FromQuery] string? query = null,
+            [FromQuery] string? category = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
-                var allTransactions = await _transactionRepository.GetByUserIdAsync(userGuid);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
 
-                var filtered = allTransactions
-                    .Where(t => t.Description != null && 
-                                t.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                IEnumerable<Core.Domain.Entities.Transaction> transactions;
 
-                var total = filtered.Sum(t => t.Amount);
+                // Si hay rango de fechas, usar el método con período
+                if (startDate.HasValue && endDate.HasValue)
+                {
+                    var utcStart = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+                    var utcEnd = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+                    transactions = await _transactionRepository.GetByUserAndPeriodAsync(
+                        userGuid.Value, utcStart, utcEnd, category);
+                }
+                else
+                {
+                    // Si no hay rango de fechas, obtener todas las transacciones del usuario
+                    transactions = await _transactionRepository.GetByUserIdAsync(userGuid.Value);
+                    
+                    // Filtrar por categoría si se especifica
+                    if (!string.IsNullOrEmpty(category))
+                    {
+                        transactions = transactions.Where(t => t.Category == category);
+                    }
+                }
+
+                var transactionList = transactions.ToList();
+
+                // Filtrar por query en descripción si se especifica
+                if (!string.IsNullOrEmpty(query))
+                {
+                    transactionList = transactionList
+                        .Where(t => t.Description != null && 
+                                    t.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                }
+
+                var total = transactionList.Sum(t => t.Amount);
 
                 return Ok(new
                 {
-                    data = filtered.Select(t => new
+                    data = transactionList.Select(t => new
                     {
                         id = t.Id,
+                        userId = t.UserId,
                         type = t.Type.ToString(),
                         amount = t.Amount,
                         category = t.Category,
                         description = t.Description,
+                        source = t.Source.ToString(),
                         createdAt = t.CreatedAt
                     }),
-                    count = filtered.Count,
+                    count = transactionList.Count,
                     totalAmount = total
                 });
             }
@@ -293,12 +347,16 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
                 
                 // Si no se envían fechas, obtener TODAS las transacciones del usuario
                 if (!startDate.HasValue && !endDate.HasValue)
                 {
-                    var allTransactions = await _transactionRepository.GetByUserIdAsync(userGuid);
+                    var allTransactions = await _transactionRepository.GetByUserIdAsync(userGuid.Value);
                     var allExpenses = allTransactions
                         .Where(t => t.Type == Core.Domain.Enums.TransactionType.Expense)
                         .ToList();
@@ -329,7 +387,7 @@ namespace API.Controllers
                 var end = DateTime.SpecifyKind(endDate?.Date.AddDays(1) ?? start.AddMonths(1), DateTimeKind.Utc);
 
                 var transactions = await _transactionRepository.GetByUserAndPeriodAsync(
-                    userGuid, start, end);
+                    userGuid.Value, start, end);
 
                 var expenses = transactions
                     .Where(t => t.Type == Core.Domain.Enums.TransactionType.Expense)

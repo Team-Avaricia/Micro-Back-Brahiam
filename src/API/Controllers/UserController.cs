@@ -28,6 +28,22 @@ namespace API.Controllers
             _telegramService = telegramService;
         }
 
+        /// <summary>
+        /// Resolves a user identifier (GUID or email) to a GUID
+        /// </summary>
+        private async Task<Guid?> ResolveUserIdAsync(string userIdentifier)
+        {
+            // Try to parse as GUID first
+            if (Guid.TryParse(userIdentifier, out var guid))
+            {
+                return guid;
+            }
+
+            // If not a GUID, treat as email
+            var user = await _userRepository.GetByEmailAsync(userIdentifier);
+            return user?.Id;
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
         {
@@ -57,8 +73,13 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(id);
-                var user = await _userRepository.GetByIdAsync(userGuid);
+                var userGuid = await ResolveUserIdAsync(id);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
+                var user = await _userRepository.GetByIdAsync(userGuid.Value);
 
                 if (user == null)
                     return NotFound(new { error = "User not found" });
@@ -97,8 +118,13 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
-                var user = await _userRepository.GetByIdAsync(userGuid);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
+                var user = await _userRepository.GetByIdAsync(userGuid.Value);
 
                 if (user == null)
                     return NotFound(new { error = "User not found" });
@@ -167,26 +193,18 @@ namespace API.Controllers
         {
             try
             {
-                Guid userGuid;
-
-                // Try to parse as GUID first, if fails, treat as email
-                if (!Guid.TryParse(userId, out userGuid))
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
                 {
-                    // userId is an email, find the user
-                    var userByEmail = await _userRepository.GetByEmailAsync(userId);
-                    if (userByEmail == null)
-                    {
-                        return NotFound(new { error = $"User with email '{userId}' not found" });
-                    }
-                    userGuid = userByEmail.Id;
+                    return NotFound(new { error = "User not found" });
                 }
 
-                var user = await _userRepository.GetByIdAsync(userGuid);
+                var user = await _userRepository.GetByIdAsync(userGuid.Value);
 
                 if (user == null)
                     return NotFound(new { error = "User not found" });
 
-                var transactions = await _transactionRepository.GetByUserIdAsync(userGuid);
+                var transactions = await _transactionRepository.GetByUserIdAsync(userGuid.Value);
                 var transactionList = transactions.ToList();
 
                 var totalIncome = transactionList
@@ -231,8 +249,13 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
-                var response = await _telegramService.GenerateLinkAsync(userGuid);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
+                var response = await _telegramService.GenerateLinkAsync(userGuid.Value);
                 return Ok(response);
             }
             catch (InvalidOperationException ex)
@@ -279,8 +302,13 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
-                var status = await _telegramService.GetStatusAsync(userGuid);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
+                var status = await _telegramService.GetStatusAsync(userGuid.Value);
                 return Ok(status);
             }
             catch (Exception ex)
@@ -294,8 +322,13 @@ namespace API.Controllers
         {
             try
             {
-                var userGuid = Guid.Parse(userId);
-                await _telegramService.UnlinkTelegramAsync(userGuid);
+                var userGuid = await ResolveUserIdAsync(userId);
+                if (userGuid == null)
+                {
+                    return NotFound(new { error = "User not found" });
+                }
+
+                await _telegramService.UnlinkTelegramAsync(userGuid.Value);
                 return Ok(new { success = true, message = "Telegram account unlinked" });
             }
             catch (Exception ex)

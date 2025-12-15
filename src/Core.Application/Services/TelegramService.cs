@@ -52,7 +52,7 @@ namespace Core.Application.Services
 
             return new GenerateTelegramLinkResponse
             {
-                Link = $"https://t.me/{botUsername}?start=LINK_{code}",
+                LinkUrl = $"https://t.me/{botUsername}?start=LINK_{code}",
                 Code = code,
                 ExpiresAt = expiresAt,
                 ExpiresInSeconds = 900

@@ -16,14 +16,14 @@ namespace Core.Domain.Enums
 
     public enum RuleType
     {
-        DailyLimit,
-        MonthlyBudget,
-        CategoryLimit,
-        SavingsGoal
+        SpendingLimit,
+        SavingsGoal,
+        CategoryBudget
     }
 
     public enum RulePeriod
     {
+        Daily,
         Weekly,
         Biweekly,
         Monthly,
