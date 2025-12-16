@@ -38,6 +38,13 @@ try
             // Configurar para que los Enums se serialicen como strings en lugar de números
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
+
+    // Configure routing options to handle encoded characters in URLs
+    builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteOptions>(options =>
+    {
+        options.ConstraintMap["regex"] = typeof(Microsoft.AspNetCore.Routing.Constraints.RegexRouteConstraint);
+    });
+
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
