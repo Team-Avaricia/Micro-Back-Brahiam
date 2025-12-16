@@ -11,12 +11,13 @@ namespace Core.Domain.Common
         protected BaseEntity()
         {
             Id = Guid.NewGuid();
-            CreatedAt = DateTime.UtcNow;
+            CreatedAt = ColombiaTimeZone.Now;
         }
 
         public void UpdateTimestamp()
         {
-            UpdatedAt = DateTime.UtcNow;
+            UpdatedAt = ColombiaTimeZone.Now;
         }
     }
 }
+

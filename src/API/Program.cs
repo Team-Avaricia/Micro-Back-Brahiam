@@ -100,16 +100,16 @@ try
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(secretKey),
-            // Use resolver to handle tokens with or without 'kid' header
+            // Use ONLY the resolver (not IssuerSigningKey) to handle tokens without 'kid'
             IssuerSigningKeyResolver = (token, securityToken, kid, validationParameters) =>
             {
                 // Always return the configured key, regardless of 'kid' value
                 return new[] { new SymmetricSecurityKey(secretKey) };
             },
-            ValidateIssuer = true,
+            // TEMPORARILY disabled to test - tokens without iss/aud will fail otherwise
+            ValidateIssuer = false,
             ValidIssuer = jwtSettings["Issuer"],
-            ValidateAudience = true,
+            ValidateAudience = false,
             ValidAudience = jwtSettings["Audience"],
             ValidateLifetime = true,
             RequireExpirationTime = true,

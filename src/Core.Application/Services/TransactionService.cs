@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
+using Core.Domain.Common;
 using Core.Domain.Entities;
 using Core.Domain.Enums;
 using Core.Domain.Interfaces;
@@ -47,7 +48,7 @@ namespace Core.Application.Services
                 request.Amount,
                 request.Type,
                 request.Category,
-                DateTime.UtcNow,
+                ColombiaTimeZone.Now,
                 request.Source,
                 request.Description
             );
